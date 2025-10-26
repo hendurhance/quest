@@ -1,0 +1,144 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on version tags like v1.0.0, v1.2.3, etc.
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write  # Required for creating releases
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for changelog generation
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Get version from package.json
+        id: package-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Package version: $VERSION"
+      
+      - name: Verify tag matches package.json version
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          PACKAGE_VERSION=${{ steps.package-version.outputs.version }}
+          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "Error: Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)"
+            exit 1
+          fi
+          echo "✓ Version check passed: $TAG_VERSION"
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run type checking
+        run: npm run type-check
+      
+      - name: Build extension
+        run: npm run build
+      
+      - name: Create build info file
+        run: |
+          cat > dist/BUILD_INFO.txt << EOF
+          Quest v${{ steps.package-version.outputs.version }}
+          Built on: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Git SHA: ${{ github.sha }}
+          Git Tag: ${{ github.ref_name }}
+          Built by: GitHub Actions
+          EOF
+      
+      - name: Create zip archive
+        run: |
+          cd dist
+          zip -r ../quest-v${{ steps.package-version.outputs.version }}.zip .
+          cd ..
+      
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREVIOUS_TAG=$(git describe --abbrev=0 --tags $(git rev-list --tags --skip=1 --max-count=1) 2>/dev/null || echo "")
+          
+          # Generate changelog
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "changelog=Initial release" >> $GITHUB_OUTPUT
+          else
+            CHANGELOG=$(git log $PREVIOUS_TAG..${{ github.ref_name }} --pretty=format:"- %s (%h)" --no-merges)
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGELOG" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Quest v${{ steps.package-version.outputs.version }}
+          body: |
+            ## 🎉 Quest v${{ steps.package-version.outputs.version }}
+            
+            ### 📦 Installation
+            
+            1. Download `quest-v${{ steps.package-version.outputs.version }}.zip`
+            2. Extract the zip file
+            3. Open Chrome and go to `chrome://extensions/`
+            4. Enable "Developer mode"
+            5. Click "Load unpacked" and select the extracted folder
+            
+            ### 📝 Changes
+            
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ### 🔨 Build Information
+            
+            - **Version**: v${{ steps.package-version.outputs.version }}
+            - **Built**: ${{ github.event.head_commit.timestamp }}
+            - **Commit**: ${{ github.sha }}
+            
+            ### 🚀 What's New
+            
+            See the [full changelog](https://github.com/${{ github.repository }}/compare/${{ steps.previous-tag.outputs.tag }}...${{ github.ref_name }}) for all changes.
+            
+            ---
+            
+            **Full build artifact included** - The attached zip file contains the complete, production-ready extension.
+          files: |
+            quest-v${{ steps.package-version.outputs.version }}.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: quest-v${{ steps.package-version.outputs.version }}
+          path: dist/
+          retention-days: 90
+      
+      - name: Build summary
+        run: |
+          echo "## ✅ Build Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version**: v${{ steps.package-version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Release ZIP: \`quest-v${{ steps.package-version.outputs.version }}.zip\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Build artifact uploaded to GitHub Actions" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🎉 Release created successfully!" >> $GITHUB_STEP_SUMMARY

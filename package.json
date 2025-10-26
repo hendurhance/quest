@@ -1,0 +1,28 @@
+{
+  "name": "quest-vue",
+  "version": "1.0.0",
+  "description": "Save articles for later reading with smart organization and unlimited storage",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "uuid": "^13.0.0",
+    "vue": "^3.4.21"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.23",
+    "@types/chrome": "^0.0.268",
+    "@types/node": "^20.11.30",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "typescript": "^5.4.3",
+    "vite": "^5.2.6",
+    "vue-tsc": "^2.0.7"
+  }
+  ,
+  "license": "GPL-3.0-or-later"
+}
