@@ -359,13 +359,36 @@ const ContentExtractor = {
     if (!article) return null
 
     const title = article.querySelector('h1')?.textContent || document.title
-    const paragraphs = article.querySelectorAll('p')
-    const content = Array.from(paragraphs)
-      .map((p) => p.textContent)
+    
+    // Extract paragraphs and headings for better content
+    const contentElements = article.querySelectorAll('p, h2, h3, h4, h5, h6, pre, blockquote, li')
+    const content = Array.from(contentElements)
+      .map((el) => el.textContent?.trim())
+      .filter(text => text && text.length > 0)
       .join('\n\n')
+
+    // If no meaningful content, try just paragraphs
+    if (content.length < 100) {
+      const paragraphs = article.querySelectorAll('p')
+      const paragraphContent = Array.from(paragraphs)
+        .map((p) => p.textContent?.trim())
+        .filter(text => text && text.length > 0)
+        .join('\n\n')
+      
+      if (paragraphContent.length < 100) {
+        return null // Not enough content
+      }
+      
+      return {
+        title,
+        content: paragraphContent,
+        wordCount: paragraphContent.split(/\s+/).length,
+      }
+    }
 
     const author = article.querySelector('[rel="author"]')?.textContent ||
       article.querySelector('.author')?.textContent ||
+      article.querySelector('[data-testid="authorName"]')?.textContent || // Medium author
       undefined
 
     const publishDate = article.querySelector('time')?.getAttribute('datetime') ||
@@ -383,6 +406,11 @@ const ContentExtractor = {
 
   extractFromCommonSelectors(): ExtractedContent | null {
     const contentSelectors = [
+      // Medium.com specific selectors
+      { title: 'h1', content: 'article' },
+      { title: '[data-testid="storyTitle"]', content: 'article' },
+      { title: '.pw-post-title', content: '.pw-post-body' },
+      // General selectors
       { title: 'h1', content: 'article' },
       { title: '.post-title', content: '.post-content' },
       { title: '.entry-title', content: '.entry-content' },
@@ -396,12 +424,20 @@ const ContentExtractor = {
 
       if (titleEl && contentEl) {
         const title = titleEl.textContent || document.title
-        const content = contentEl.textContent || ''
+        
+        // For Medium and similar sites, extract only paragraph text
+        const paragraphs = contentEl.querySelectorAll('p, h1, h2, h3, h4, h5, h6')
+        const content = Array.from(paragraphs)
+          .map((p) => p.textContent?.trim())
+          .filter(text => text && text.length > 0)
+          .join('\n\n')
 
-        return {
-          title,
-          content,
-          wordCount: content.split(/\s+/).length,
+        if (content.length > 100) { // Ensure we got meaningful content
+          return {
+            title,
+            content,
+            wordCount: content.split(/\s+/).length,
+          }
         }
       }
     }

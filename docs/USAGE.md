@@ -1,6 +1,6 @@
 # Quest - Usage Guide
 
-A comprehensive guide to using all features of Quest.
+A comprehensive guide to using all features of Quest on Google Chrome and Microsoft Edge.
 
 ![Quest Extension Showcase](../images/slide.png)
 

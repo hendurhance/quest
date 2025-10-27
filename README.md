@@ -16,17 +16,25 @@ An efficient, open source Chrome extension for saving, organizing, and consuming
 | Browser | Install Link |
 |---------|----------------|
 | Chrome  | [![Install Quest](https://img.shields.io/badge/Install-Quest-blue?logo=googlechrome&style=for-the-badge)](https://chrome.google.com/webstore/detail/quest-save-articles/your-extension-id) |
-| Firefox | [![Install Quest](https://img.shields.io/badge/Install-Quest-blue?logo=firefox&style=for-the-badge)](https://addons.mozilla.org/en-US/firefox/addon/quest/) |
+| Edge    | [![Install Quest](https://img.shields.io/badge/Install-Quest-blue?logo=microsoftedge&style=for-the-badge)](https://microsoftedge.microsoft.com/addons/detail/quest/) |
+| Firefox | [![Install Quest](https://img.shields.io/badge/Install-Quest-blue?logo=firefox&style=for-the-badge)](https://addons.mozilla.org/en-US/firefox/addon/quest/) *(Coming Soon)* |
 ---
 
 ### Manual Installation (Development)
 
+**For Chrome:**
 1. Download or clone this repository
 2. Install dependencies: `npm install`
 3. Build the extension: `npm run build`
 4. Open Chrome and go to `chrome://extensions/`
 5. Enable "Developer mode" and click "Load unpacked"
 6. Select the `dist/` folder
+
+**For Edge:**
+1. Follow steps 1-3 above
+2. Open Edge and go to `edge://extensions/`
+3. Enable "Developer mode" and click "Load unpacked"
+4. Select the `dist/` folder
 
 ---
 
