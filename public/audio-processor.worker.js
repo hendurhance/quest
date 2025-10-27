@@ -47,10 +47,6 @@ self.addEventListener('message', async (event) => {
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i)
       }
-        Array.from(bytes.slice(0, 20))
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join(' ')
-      )
       
       let finalBytes = bytes
       let mimeType = 'audio/mpeg'
