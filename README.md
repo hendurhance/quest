@@ -3,6 +3,8 @@
 
 An efficient, open source Chrome extension for saving, organizing, and consuming web articles — powered by AI.
 
+![Quest Extension](images/slide.png)
+
 * **Lightweight & Fast**: Minimal resource footprint, no performance impact on browsing
 * **Privacy First**: All data stored locally, API keys encrypted client-side
 * **AI-Powered**: Optional AI summaries and text-to-speech (bring your own API keys)

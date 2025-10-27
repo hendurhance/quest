@@ -2,6 +2,8 @@
 
 A comprehensive guide to using all features of Quest.
 
+![Quest Extension Showcase](../images/slide.png)
+
 ---
 
 ## Table of Contents
@@ -54,6 +56,8 @@ Quest has three main interfaces:
 
 The fastest way to save the current page:
 
+![Quest Popup](../images/popup.png)
+
 1. **Click the extension icon** while on any webpage
 2. The popup automatically loads:
    - Page title
@@ -89,6 +93,8 @@ Save without opening the popup:
 1. Right-click any link
 2. Select **"Save Link to Quest"**
 3. Link saved for later reading
+
+![Save Link Context Menu](../images/save-link.png)
 
 **Save Selected Text:**
 1. Highlight text on any page
@@ -150,6 +156,8 @@ Open the full manager:
 - Click **"View All"** in popup, or
 - Click extension icon → **"Manager"**, or
 - Right-click extension icon → **"Manager"**
+
+![Manager Dashboard](../images/manager.png)
 
 ### Dashboard Layout
 
@@ -363,6 +371,8 @@ Select multiple articles for batch actions:
 
 Quest supports multiple AI providers. **You must bring your own API keys.**
 
+![AI Features](../images/ai-features.png)
+
 ### Supported Providers
 
 **Summary Providers:**
@@ -463,6 +473,8 @@ Quest supports multiple AI providers. **You must bring your own API keys.**
    - Copy to clipboard
    - Close modal
 
+![AI Summary View](../images/ai-summary.png)
+
 **Summary Features:**
 - Stored permanently with article
 - Supports both types per article
@@ -507,6 +519,8 @@ Quest supports multiple AI providers. **You must bring your own API keys.**
    - Inject into page (listen while browsing)
    - Close modal
 
+![Podcast Player](../images/podcast.png)
+
 **Podcast Features:**
 - Stored as WAV audio locally
 - Offline playback support
@@ -520,6 +534,8 @@ Quest supports multiple AI providers. **You must bring your own API keys.**
 1. Open Manager
 2. Click **AI Dashboard** icon in header
 3. See comprehensive stats:
+
+![AI Dashboard and Audit Logs](../images/audit-logs.png)
 
 **Usage Statistics:**
 - Total API calls
