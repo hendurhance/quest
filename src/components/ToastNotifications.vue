@@ -105,12 +105,12 @@ const { notifications, hideNotification } = useNotification()
 }
 
 .toast-warning {
-  border-left: 4px solid #f59e0b;
+  border-left: 4px solid #1daabf;
 }
 
 .toast-warning .toast-icon {
   background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
+  color: #1daabf;
 }
 
 .toast-info {

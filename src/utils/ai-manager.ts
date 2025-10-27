@@ -1,4 +1,3 @@
-// AI Manager for Quest (TypeScript)
 import type { Summary, AudioFile, Settings, AuditLog, SummaryProvider } from '@/types'
 import { AIProvider, SummaryType } from '@/types'
 import { storage, generateSmartPrompt } from './storage'
@@ -307,8 +306,14 @@ export class AIManager {
         const summaries = await storage.getSummariesForArticle(articleId)
         summary = summaries.find((s) => s.id === summaryId) || null
       } else {
-        // Generate extended summary first
-        summary = await this.generateSummary(articleId, SummaryType.EXTENDED)
+        // Check if an extended summary already exists
+        const summaries = await storage.getSummariesForArticle(articleId)
+        summary = summaries.find((s) => s.type === SummaryType.EXTENDED) || null
+        
+        // Only generate a new extended summary if one doesn't exist
+        if (!summary) {
+          summary = await this.generateSummary(articleId, SummaryType.EXTENDED)
+        }
       }
 
       if (!summary) {

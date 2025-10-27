@@ -453,13 +453,13 @@ const handleInject = () => {
 }
 
 .regenerate-btn {
-  background: #f59e0b20;
-  color: #f59e0b;
-  border: 1px solid #f59e0b40;
+  background: #1daabf20;
+  color: #1daabf;
+  border: 1px solid #1daabf40;
 }
 
 .regenerate-btn:hover {
-  background: #f59e0b30;
-  border-color: #f59e0b60;
+  background: #1daabf30;
+  border-color: #1daabf60;
 }
 </style>

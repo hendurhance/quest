@@ -1,4 +1,3 @@
-// IndexedDB Storage System for Quest (TypeScript)
 import type {
   Article,
   Summary,

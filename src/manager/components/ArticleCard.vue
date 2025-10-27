@@ -301,7 +301,7 @@ const handleImageError = (e: Event) => {
 }
 
 .article-card--pinned {
-  border-left: 3px solid var(--warning-color, #f59e0b);
+  border-left: 3px solid var(--warning-color, #1daabf);
   padding-left: 13px;
 }
 
@@ -433,7 +433,7 @@ const handleImageError = (e: Event) => {
 
 .article-card__badge--pinned {
   background: rgba(245, 158, 11, 0.1);
-  color: var(--warning-color, #f59e0b);
+  color: var(--warning-color, #1daabf);
 }
 
 .article-card__badge--pinned svg {
@@ -533,8 +533,8 @@ const handleImageError = (e: Event) => {
 }
 
 .article-card__action--primary:hover:not(:disabled) {
-  background: #b45309;
-  border-color: #b45309;
+  background: #07272f;
+  border-color: #07272f;
   color: white;
 }
 
@@ -546,8 +546,8 @@ const handleImageError = (e: Event) => {
 }
 
 .article-card__action--active:hover:not(:disabled) {
-  background: #b45309;
-  border-color: #b45309;
+  background: #07272f;
+  border-color: #07272f;
   opacity: 0.9;
 }
 

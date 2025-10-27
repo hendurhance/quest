@@ -677,6 +677,12 @@ const handleInjectSummary = async (article: Article, summary: any) => {
     
     const url = article.actualUrl || article.cleanUrl
     
+    // Check if URL is a chrome:// or extension URL
+    if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('edge://')) {
+      showError('Cannot inject into browser or extension pages')
+      return
+    }
+    
     // Find the tab with this URL
     const tabs = await chrome.tabs.query({ url: url })
     
@@ -695,12 +701,15 @@ const handleInjectSummary = async (article: Article, summary: any) => {
         }
         chrome.tabs.onUpdated.addListener(listener)
         
-        // Timeout after 10 seconds
+        // Timeout after 15 seconds
         setTimeout(() => {
           chrome.tabs.onUpdated.removeListener(listener)
           resolve()
-        }, 10000)
+        }, 15000)
       })
+      
+      // Give content script extra time to initialize after page load
+      await new Promise(resolve => setTimeout(resolve, 1000))
     } else {
       // Tab exists - focus it
       targetTab = tabs[0]
@@ -712,7 +721,25 @@ const handleInjectSummary = async (article: Article, summary: any) => {
       }
     }
     
-    // Inject the summary into the page
+    // Wait for content script to be ready by pinging it
+    const waitForContentScript = async (retries = 15, delay = 500): Promise<void> => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          await chrome.tabs.sendMessage(targetTab.id!, { action: 'ping' })
+          return // Content script is ready
+        } catch (err) {
+          if (i === retries - 1) {
+            throw new Error('Content script not loaded. The page may be blocking scripts, or you may need to refresh the page.')
+          }
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+      }
+    }
+    
+    await waitForContentScript()
+    
+    // Now send the actual message
     await chrome.tabs.sendMessage(targetTab.id!, {
       action: 'injectSummary',
       summary: summary.content,
@@ -727,7 +754,7 @@ const handleInjectSummary = async (article: Article, summary: any) => {
     showSummaryModal.value = false
   } catch (err) {
     console.error('Failed to inject summary:', err)
-    showError('Failed to inject summary into page.')
+    showError(err instanceof Error ? err.message : 'Failed to inject summary into page.')
   }
 }
 
@@ -752,6 +779,12 @@ const handleInjectPodcast = async (article: Article, audioFile: any, audioUrl: s
     }
     
     const url = article.actualUrl || article.cleanUrl
+    
+    // Check if URL is a chrome:// or extension URL
+    if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('edge://')) {
+      showError('Cannot inject into browser or extension pages')
+      return
+    }
     
     // Convert blob URL to data URL for cross-context compatibility
     let dataUrl = audioUrl
@@ -790,12 +823,15 @@ const handleInjectPodcast = async (article: Article, audioFile: any, audioUrl: s
         }
         chrome.tabs.onUpdated.addListener(listener)
         
-        // Timeout after 10 seconds
+        // Timeout after 15 seconds
         setTimeout(() => {
           chrome.tabs.onUpdated.removeListener(listener)
           resolve()
-        }, 10000)
+        }, 15000)
       })
+      
+      // Give content script extra time to initialize after page load
+      await new Promise(resolve => setTimeout(resolve, 1000))
     } else {
       // Tab exists - focus it
       targetTab = tabs[0]
@@ -807,7 +843,25 @@ const handleInjectPodcast = async (article: Article, audioFile: any, audioUrl: s
       }
     }
     
-    // Inject the podcast into the page
+    // Wait for content script to be ready by pinging it
+    const waitForContentScript = async (retries = 15, delay = 500): Promise<void> => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          await chrome.tabs.sendMessage(targetTab.id!, { action: 'ping' })
+          return // Content script is ready
+        } catch (err) {
+          if (i === retries - 1) {
+            throw new Error('Content script not loaded. The page may be blocking scripts, or you may need to refresh the page.')
+          }
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+      }
+    }
+    
+    await waitForContentScript()
+    
+    // Now send the actual message
     await chrome.tabs.sendMessage(targetTab.id!, {
       action: 'injectPodcast',
       podcastData: {
@@ -825,7 +879,7 @@ const handleInjectPodcast = async (article: Article, audioFile: any, audioUrl: s
     showPodcastModal.value = false
   } catch (err) {
     console.error('Failed to inject podcast:', err)
-    showError('Failed to inject podcast into page.')
+    showError(err instanceof Error ? err.message : 'Failed to inject podcast into page.')
   }
 }
 

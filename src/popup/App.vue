@@ -158,7 +158,7 @@ const initializeDefaultCategories = async () => {
         { name: 'Personal', color: '#10b981' },
         { name: 'Research', color: '#8b5cf6' },
         { name: 'General', color: '#6b7280' },
-        { name: 'Articles', color: '#f59e0b' },
+        { name: 'Articles', color: '#1daabf' },
         { name: 'Development', color: '#06b6d4' },
         { name: 'Videos', color: '#ec4899' },
         { name: 'News', color: '#ef4444' },

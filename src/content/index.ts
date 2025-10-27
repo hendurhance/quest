@@ -177,6 +177,11 @@ function setupAudioPlayer(container: HTMLElement, _podcastData: any): void {
 
 // Listen for messages from popup and background
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.action === 'ping') {
+    sendResponse({ ready: true })
+    return true
+  }
+
   if (message.action === 'getWordCount') {
     const wordCount = calculateWordCount()
     sendResponse({ wordCount })
@@ -540,7 +545,7 @@ function injectPodcastIntoPage(podcastData: any) {
         width: 48px;
         height: 48px;
         border-radius: 50%;
-        background: #f59e0b;
+        background: #1daabf;
         border: none;
         color: white;
         cursor: pointer;
@@ -570,7 +575,7 @@ function injectPodcastIntoPage(podcastData: any) {
       }
       .progress-fill {
         height: 100%;
-        background: #f59e0b;
+        background: #1daabf;
         transition: width 0.1s;
       }
     `
