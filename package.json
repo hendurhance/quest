@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
-    "type-check": "vue-tsc --noEmit"
+    "type-check": "vue-tsc --noEmit",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "uuid": "^13.0.0",
@@ -15,13 +19,20 @@
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.23",
+    "@testing-library/user-event": "^14.6.1",
+    "@testing-library/vue": "^8.1.0",
     "@types/chrome": "^0.0.268",
     "@types/node": "^20.11.30",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-vue": "^5.0.4",
+    "@vitest/ui": "^4.0.5",
+    "fake-indexeddb": "^6.2.4",
+    "happy-dom": "^20.0.10",
+    "jsdom": "^27.0.1",
     "typescript": "^5.4.3",
     "vite": "^5.2.6",
     "vite-plugin-zip-pack": "^1.2.4",
+    "vitest": "^2.1.8",
     "vue-tsc": "^2.0.7"
   },
   "license": "GPL-3.0-or-later"
