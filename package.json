@@ -1,6 +1,6 @@
 {
   "name": "quest-vue",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Save, organize, and consume web articles efficiently. Optional AI summaries and podcasts. Privacy-first, open source.",
   "type": "module",
   "scripts": {
