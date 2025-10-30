@@ -1,4 +1,4 @@
-# 📚 Quest
+# 📚 Quest - Save & Organize Articles with AI
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue)](https://www.typescriptlang.org/) [![Vue 3](https://img.shields.io/badge/Vue-3.4-brightgreen)](https://vuejs.org/) [![Vite](https://img.shields.io/badge/Vite-5.2-646CFF)](https://vitejs.dev/) [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 An efficient, open source Chrome extension for saving, organizing, and consuming web articles — powered by AI.
@@ -82,7 +82,7 @@ Quest is designed with privacy and efficiency in mind:
 Quest supports multiple AI providers. You must bring your own API keys:
 
 **For Summaries:**
-- [OpenAI](https://platform.openai.com/) (GPT-4o-mini, GPT-4.1)
+- [OpenAI](https://platform.openai.com/) (GPT-5 series, GPT-4.1 series)
 - [Google Gemini](https://ai.google.dev/) (Gemini 2.5 Flash, Pro) — **Recommended** (free tier available)
 
 **For Text-to-Speech:**

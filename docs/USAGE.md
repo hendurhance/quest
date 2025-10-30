@@ -376,12 +376,12 @@ Quest supports multiple AI providers. **You must bring your own API keys.**
 ### Supported Providers
 
 **Summary Providers:**
-- **OpenAI** - GPT-4o-mini, GPT-4.1, GPT-3.5-turbo, GPT-4
-- **Google Gemini** - Gemini 2.5 Flash, Gemini 2.5 Pro, Gemini 1.5 Pro
+- **OpenAI** - GPT-5 Nano, GPT-5 Mini, GPT-5, GPT-4.1 Nano, GPT-4.1 Mini, GPT-4.1
+- **Google Gemini** - Gemini 2.5 Flash-Lite, Gemini 2.5 Flash, Gemini 2.5 Pro
 
 **TTS (Text-to-Speech) Providers:**
-- **ElevenLabs** - 4 voice models, multiple voices
-- **Google Gemini TTS** - 30+ high-quality voices
+- **ElevenLabs** - Flash v2.5, Turbo v2.5, Multilingual v2, v3
+- **Google Gemini TTS** - Gemini 2.5 Flash TTS, Gemini 2.5 Pro TTS (70+ voices)
 
 ### Setting Up AI
 
@@ -650,21 +650,23 @@ Access Settings: Manager → ⚙️ icon
 ### Model Selection
 
 **OpenAI Models:**
-- **GPT-4o-mini** - Fast, affordable (~$0.0003/summary)
-- **GPT-4.1** - Best quality (~$0.01/summary)
-- **GPT-3.5-turbo** - Budget option
-- **GPT-4** - Premium quality
+- **GPT-5 Nano** - Fastest, most cost-efficient (~$0.0002/summary) ⭐
+- **GPT-5 Mini** - Faster, cost-efficient reasoning (~$0.001/summary)
+- **GPT-5** - Best for coding and agentic tasks (~$0.005/summary)
+- **GPT-4.1 Nano** - Fastest GPT-4.1 (~$0.0003/summary)
+- **GPT-4.1 Mini** - Smaller, faster intelligence model (~$0.002/summary)
+- **GPT-4.1** - Smartest non-reasoning model (~$0.008/summary)
 
 **Gemini Models:**
-- **Gemini 2.5 Flash** - Fastest (~$0.00001/summary) ⭐
-- **Gemini 2.5 Pro** - Best quality (~$0.0001/summary)
-- **Gemini 1.5 Pro** - Balanced option
+- **Gemini 2.5 Flash-Lite** - Fastest, cost-efficient (~$0.0002/summary)
+- **Gemini 2.5 Flash** - Best price-performance (~$0.001/summary) ⭐
+- **Gemini 2.5 Pro** - State-of-the-art reasoning (~$0.005/summary)
 
 **ElevenLabs Models:**
-- **Flash v2.5** - Fastest
-- **Turbo v2.5** - Fast and natural
-- **Multilingual v2** - Multi-language
-- **v3** - Best quality
+- **Flash v2.5** - Fastest, ultra-low latency (~75ms)
+- **Turbo v2.5** - Fast and natural, low latency (~250-300ms) ⭐
+- **Multilingual v2** - Most stable, 29 languages
+- **v3** - Most expressive, 70+ languages (Alpha)
 
 **ElevenLabs Voices:**
 - Multiple male/female voices
@@ -672,8 +674,12 @@ Access Settings: Manager → ⚙️ icon
 - Natural intonation
 - Emotional expression
 
+**Gemini TTS Models:**
+- **Gemini 2.5 Flash TTS** - Fast, cost-effective ($10 per 1M chars) ⭐
+- **Gemini 2.5 Pro TTS** - Highest quality ($80 per 1M chars)
+
 **Gemini TTS Voices:**
-- 30+ high-quality voices
+- 70+ high-quality voices
 - Multiple languages
 - Male/female options
 - Studio quality
