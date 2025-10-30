@@ -3,7 +3,7 @@ import pkg from './package.json'
 
 export default defineManifest({
   manifest_version: 3,
-  name: 'Quest',
+  name: 'Quest - Save & Organize Articles with AI',
   version: pkg.version,
   description: pkg.description,
   permissions: [

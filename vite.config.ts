@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import { crx } from '@crxjs/vite-plugin'
 import path from 'path'
 import manifest from './manifest.config'
+import zip from 'vite-plugin-zip-pack'
 
 export default defineConfig({
   resolve: {
@@ -13,6 +14,7 @@ export default defineConfig({
   plugins: [
     vue(),
     crx({ manifest }),
+    zip({ outDir: 'release', outFileName: 'release.zip' }),
   ],
   server: {
     port: 5173,

@@ -15,8 +15,8 @@ An efficient, open source Chrome extension for saving, organizing, and consuming
 ##  🚀 Installation
 | Browser | Install Link |
 |---------|----------------|
-| Chrome  | [![Install Quest](https://img.shields.io/badge/Install-Quest-blue?logo=googlechrome&style=for-the-badge)](https://chrome.google.com/webstore/detail/quest-save-articles/your-extension-id) |
-| Edge    | [![Install Quest](https://img.shields.io/badge/Install-Quest-blue?logo=microsoftedge&style=for-the-badge)](https://microsoftedge.microsoft.com/addons/detail/quest/) |
+| Chrome  | [![Install Quest](https://img.shields.io/badge/Install-Quest-blue?logo=googlechrome&style=for-the-badge)](https://chrome.google.com/webstore/detail/nklickjfgdodflfpkjljfhhilfnkmhfl) |
+| Edge    | [![Install Quest](https://img.shields.io/badge/Install-Quest-blue?logo=microsoftedge&style=for-the-badge)](https://microsoftedge.microsoft.com/addons/detail/quest/nnfdfmboghffjhfabpehmgkhcmiclfea) |
 | Firefox | [![Install Quest](https://img.shields.io/badge/Install-Quest-blue?logo=firefox&style=for-the-badge)](https://addons.mozilla.org/en-US/firefox/addon/quest/) *(Coming Soon)* |
 ---
 
