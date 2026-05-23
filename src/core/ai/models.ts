@@ -1,15 +1,3 @@
-/**
- * Model Configuration for AI Providers
- * Last Updated: 24th October 2025
- * 
- * OpenAI models from: https://platform.openai.com/docs/models
- * OpenAI pricing from: https://openai.com/api/pricing/
- * Gemini models from: https://ai.google.dev/gemini-api/docs/models
- * Gemini pricing from: https://ai.google.dev/gemini-api/docs/pricing
- * Gemini TTS pricing from: https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-preview-tts
- * ElevenLabs models from: https://elevenlabs.io/docs/models#text-to-speech
- */
-
 import { AIProvider } from '@/types/ai-providers'
 import type { SummaryProvider } from '@/types/ai-providers'
 

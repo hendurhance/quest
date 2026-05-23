@@ -1,11 +1,3 @@
-/**
- * Voice Configuration for TTS Services
- * Last Updated: 22nd October 2025
- * 
- * ElevenLabs voices from: https://api.elevenlabs.io/v2/voices
- * Google (Gemini) voices from: https://cloud.google.com/text-to-speech/docs/gemini-tts#voice_options
- */
-
 import { AIProvider } from '@/types/ai-providers'
 import type { TTSProvider } from '@/types/ai-providers'
 
