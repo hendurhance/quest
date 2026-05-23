@@ -1,1300 +1,683 @@
 <template>
-  <div class="app-container">
-    <!-- Header -->
-    <ManagerHeader
-      v-model:search-query="searchQuery"
-      @add-article="showAddArticleModal"
-      @export-import="showExportImport"
-      @open-ai-dashboard="openAIDashboard"
-      @toggle-theme="toggleTheme"
-      @open-settings="showSettings"
-    />
+  <div class="app" :class="{ 'q-reveal': revealing }">
+    <!-- Reader takes over the surface when an article is open -->
+    <Reader v-if="reader.article" @close="closeReader" />
 
-    <!-- Main Content -->
-    <div class="main-content">
-      <!-- Sidebar -->
-      <ManagerSidebar
-        :current-view="currentView"
-        :current-category-id="currentCategoryId"
-        :stats="stats"
-        :categories="categories"
-        :get-category-count="getCategoryCount"
-        @change-view="changeView"
-        @create-category="showCreateCategoryModal"
-        @edit-category="handleEditCategory"
-        @delete-category="handleDeleteCategory"
-      />
+    <template v-else>
+      <AppHeader class="reveal-block" :style="{ '--i': 0 }" @add="showAdd = true" @settings="showSettings = true" @usage="openUsage" />
 
-      <!-- Article List -->
-      <ArticleListContainer>
-        <!-- Page Header -->
-        <PageHeader
-          :title="getViewTitle()"
-          :article-count="filteredArticles.length"
+      <div class="app__main">
+        <ContentsRail
+          class="reveal-block"
+          :style="{ '--i': 1 }"
+          @new-category="openNewCategory"
+          @edit-category="openEditCategory"
+          @delete-category="handleDeleteCategory"
         />
 
-        <!-- Toolbar -->
-        <Toolbar
-          :show-filters="showFilters"
-          v-model:current-filter="currentFilter"
-          :has-active-filters="hasActiveFilters"
-          :active-filter-count="activeFilterCount"
-          :top-sources="topSources"
-          :popular-tags="popularTags"
-          v-model:sort-by="sortBy"
-          :select-mode="selectMode"
-          :selected-count="selectedArticles.size"
-          :show-bulk-actions="showBulkActions"
-          @toggle-filters="toggleFilters"
-          @apply-filters="applyFilters"
-          @clear-filters="clearFilters"
-          @toggle-select-mode="toggleSelectMode"
-          @exit-select-mode="exitSelectMode"
-          @clear-selection="clearSelection"
-          @toggle-bulk-menu="toggleBulkMenu"
-          @bulk-action="handleBulkAction"
-        />
+        <main class="content reveal-block" :style="{ '--i': 2 }">
+          <div class="page-head">
+            <h2 class="page-head__title">{{ viewTitle }}</h2>
+            <span class="page-head__count">{{ library.visible.length }} {{ library.visible.length === 1 ? 'entry' : 'entries' }}</span>
+          </div>
 
-        <!-- Content Area -->
-        <ContentArea
-          :is-loading="isLoading"
-          :article-count="filteredArticles.length"
-          :empty-message="getEmptyStateMessage()"
-          :show-pagination="filteredArticles.length > itemsPerPage"
-          :current-page="currentPage"
-          :total-pages="totalPages"
-          @go-to-page="goToPage"
-        >
-          <ArticleCard
-            v-for="article in paginatedArticles"
-            :key="article.id"
-            :article="article"
-            :isSelected="selectedArticles.has(article.id)"
-            :selectMode="selectMode"
-            :hasSummary="article.summaryIds && article.summaryIds.length > 0"
-            :hasPodcast="!!article.audioId"
-            :summaryLoading="summaryGeneratingArticles.has(article.id)"
-            :podcastLoading="podcastGeneratingArticles.has(article.id)"
-            @select="toggleSelection(article.id)"
-            @open="openArticle(article.id)"
-            @action="handleArticleAction"
-          >
-            <template #summary>
-              <div class="ai-feature-content">
-                <div class="ai-feature-meta">
-                  <span v-if="article.aiSummary" class="provider-badge" :class="article.aiSummary.aiProvider.toLowerCase()">
-                    {{ article.aiSummary.aiProvider }}
-                  </span>
-                  <span v-if="article.aiSummary" class="type-badge">
-                    {{ getSummaryTypeDisplayName(article.aiSummary.type) }}
-                  </span>
-                  <span v-if="article.aiSummary" class="model-badge" title="Model used">
-                    {{ article.aiSummary.model || 'N/A' }}
-                  </span>
-                </div>
-                <button 
-                  @click.stop="viewSummary(article.id)"
-                  class="view-ai-btn"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                  View Summary
-                </button>
+          <div class="toolbar">
+            <div class="toolbar__group">
+              <div class="select select--sm">
+                <select v-model="library.sort">
+                  <option value="date-desc">Newest first</option>
+                  <option value="date-asc">Oldest first</option>
+                  <option value="title-asc">Title A–Z</option>
+                  <option value="title-desc">Title Z–A</option>
+                  <option value="domain-asc">Source</option>
+                </select>
               </div>
-            </template>
-            <template #podcast>
-              <div class="ai-feature-content">
-                <div class="ai-feature-meta">
-                  <span v-if="article.audioPodcast" class="provider-badge" :class="article.audioPodcast.aiProvider.toLowerCase()">
-                    {{ formatProvider(article.audioPodcast.aiProvider) }}
-                  </span>
-                  <span v-if="article.audioPodcast" class="voice-badge" title="Voice used">
-                    {{ article.audioPodcast.voiceName || 'Default' }}
-                  </span>
-                  <span v-if="article.audioPodcast && article.audioPodcast.duration" class="duration-badge">
-                    {{ formatDuration(article.audioPodcast.duration) }}
-                  </span>
-                </div>
-                <button 
-                  @click.stop="viewPodcast(article.id)"
-                  class="view-ai-btn"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/>
-                  </svg>
-                  Listen to Podcast
-                </button>
+              <div class="view-toggle">
+                <button :class="{ on: viewMode === 'list' }" title="List" @click="viewMode = 'list'"><QIcon name="list" :size="16" /></button>
+                <button :class="{ on: viewMode === 'grid' }" title="Grid" @click="viewMode = 'grid'"><QIcon name="grid" :size="16" /></button>
               </div>
-            </template>
-          </ArticleCard>
-        </ContentArea>
-      </ArticleListContainer>
-    </div>
+              <QButton :variant="selectMode ? 'secondary' : 'ghost'" size="sm" @click="toggleSelect">
+                {{ selectMode ? 'Cancel' : 'Select' }}
+              </QButton>
+            </div>
+          </div>
 
-    <!-- Modals -->
-    <SettingsModal v-model:show="showSettingsModal" @close="showSettingsModal = false" />
-    <ArticleModal 
-      v-model:show="showArticleModal" 
-      :article="editingArticle"
-      @close="showArticleModal = false"
-      @saved="handleArticleSaved"
-    />
-    <ExportImportModal 
-      v-model:show="showExportModal"
-      @close="showExportModal = false"
-      @imported="handleDataImported"
-    />
-    <CategoryModal 
-      :show="showCategoryModal"
-      :existing-categories="categories"
-      :editing-category="editingCategory"
-      @close="showCategoryModal = false"
-      @created="handleCategoryCreated"
-      @updated="handleCategoryUpdated"
-    />
-    
-    <!-- Confirm Delete Category Modal -->
-    <ConfirmModal
-      v-model:show="showDeleteCategoryModal"
-      title="Delete Category"
-      :message="`Are you sure you want to delete '${categoryToDelete?.name}'? This action cannot be undone.`"
-      confirm-text="Delete"
-      cancel-text="Cancel"
-      type="danger"
-      @confirm="confirmDeleteCategory"
-      @cancel="cancelDeleteCategory"
-    />
-    
-    <!-- Confirm Delete Article Modal -->
-    <ConfirmModal
-      v-model:show="showDeleteArticleModal"
-      title="Delete Article"
-      :message="`Are you sure you want to delete this article? This action cannot be undone.`"
-      confirm-text="Delete"
-      cancel-text="Cancel"
-      type="danger"
-      @confirm="confirmDeleteArticle"
-      @cancel="cancelDeleteArticle"
-    />
-    
-    <!-- Summary View Modal -->
-    <SummaryViewModal
-      v-if="selectedSummary && selectedArticle"
-      :show="showSummaryModal"
-      :summary="selectedSummary"
-      :article="selectedArticle"
-      @close="showSummaryModal = false"
-      @copy="handleCopySummary"
-      @regenerate="handleRegenerateSummary"
-      @inject="handleInjectSummary"
-    />
-    
-    <!-- Podcast View Modal -->
-    <PodcastViewModal
-      v-if="selectedAudioFile && selectedArticle"
-      :show="showPodcastModal"
-      :audio-file="selectedAudioFile"
-      :article="selectedArticle"
-      @close="showPodcastModal = false"
-      @regenerate="handleRegeneratePodcast"
-      @inject="handleInjectPodcast"
-    />
+          <div v-if="library.isLoading" class="state"><QSpinner size="lg" /></div>
 
-    <!-- Toast Notifications -->
-    <ToastNotifications />
+          <div v-else-if="!library.visible.length" class="state state--empty">
+            <QIcon name="book-open" :size="34" class="state__mark" />
+            <p class="state__text">{{ emptyMessage }}</p>
+          </div>
+
+          <div v-else :class="viewMode === 'grid' ? 'grid' : 'list'">
+            <EntryCard
+              v-for="(article, index) in library.paged"
+              :key="article.id"
+              class="reveal-item"
+              :style="{ '--i': index < 14 ? index : 14 }"
+              :article="article"
+              :view="viewMode"
+              :selected="library.selection.has(article.id)"
+              :select-mode="selectMode"
+              @select="library.toggleSelect(article.id)"
+              @action="(type) => handleAction(article, type)"
+            />
+          </div>
+
+          <div v-if="library.pageCount > 1" class="pager">
+            <QButton variant="ghost" size="sm" :disabled="library.page === 1" @click="library.goToPage(library.page - 1)">‹ Prev</QButton>
+            <span class="pager__label">{{ library.page }} / {{ library.pageCount }}</span>
+            <QButton variant="ghost" size="sm" :disabled="library.page === library.pageCount" @click="library.goToPage(library.page + 1)">Next ›</QButton>
+          </div>
+        </main>
+      </div>
+
+      <Transition name="bulkbar">
+        <div v-if="selectMode" class="bulkbar">
+          <span class="bulkbar__count">{{ library.selection.size }} selected</span>
+          <span class="bulkbar__rule" />
+          <button class="bulkbar__act" :disabled="!library.selection.size" @click="bulk('read')"><QIcon name="check" :size="15" /> Read</button>
+          <button class="bulkbar__act" :disabled="!library.selection.size" @click="bulk('pin')"><QIcon name="star" :size="15" /> Pin</button>
+          <button class="bulkbar__act" :disabled="!library.selection.size" @click="bulk('archive')"><QIcon name="archive" :size="15" /> Archive</button>
+          <button class="bulkbar__act" :disabled="!library.selection.size" @click="bulk('group')"><QIcon name="sparkles" :size="15" /> Group</button>
+          <button class="bulkbar__act bulkbar__act--danger" :disabled="!library.selection.size" @click="bulk('delete')"><QIcon name="trash" :size="15" /> Delete</button>
+          <span class="bulkbar__rule" />
+          <button class="bulkbar__done" @click="exitSelect">Done</button>
+        </div>
+      </Transition>
+    </template>
+
+    <CommandPalette @add="showAdd = true" @settings="showSettings = true" @usage="openUsage" @open="openArticleById" />
+    <SettingsModal v-model:open="showSettings" />
+    <CategoryEditor v-model:open="showCategory" :editing="editingCategory" @save="saveCategory" />
+
+    <QModal v-model:open="showAdd" title="Add by URL" size="sm">
+      <div class="add-form">
+        <QField v-model="addUrl" label="URL" placeholder="https://…" type="url" />
+        <QField v-model="addTitle" label="Title (optional)" placeholder="Article title" />
+      </div>
+      <template #footer>
+        <QButton variant="ghost" @click="showAdd = false">Cancel</QButton>
+        <QButton variant="primary" :disabled="!addUrl.trim()" @click="addByUrl">Add</QButton>
+      </template>
+    </QModal>
+
+    <QModal v-model:open="showUsage" title="AI Usage" size="md">
+      <div class="usage">
+        <div class="usage__row"><span>Summaries</span><strong>{{ usage.totals.summaries }}</strong></div>
+        <div class="usage__row"><span>Podcasts</span><strong>{{ usage.totals.podcasts }}</strong></div>
+        <div class="usage__row"><span>Requests</span><strong>{{ usage.totals.requests }}</strong></div>
+        <div class="usage__row"><span>Estimated cost</span><strong>${{ usage.totals.cost.toFixed(4) }}</strong></div>
+      </div>
+      <div v-if="usage.logs.length" class="activity">
+        <p class="activity__title">Recent activity</p>
+        <div v-for="log in usage.logs.slice(0, 10)" :key="log.id" class="activity__row">
+          <span class="activity__what">{{ log.action === 'generate_podcast' ? 'Podcast' : 'Summary' }}</span>
+          <span class="activity__prov">{{ log.provider }}</span>
+          <span class="activity__when">{{ formatDateTime(log.timestamp) }}</span>
+          <QIcon :name="log.success ? 'check' : 'x'" :size="13" class="activity__status" :class="{ 'activity__status--ok': log.success }" />
+        </div>
+      </div>
+      <template #footer>
+        <QButton variant="primary" @click="showUsage = false">Done</QButton>
+      </template>
+    </QModal>
+
+    <QModal v-model:open="showConfirm" title="Delete article" size="sm">
+      <p class="confirm">This article and its summaries, podcast and highlights will be permanently removed.</p>
+      <template #footer>
+        <QButton variant="ghost" @click="showConfirm = false">Cancel</QButton>
+        <QButton variant="danger" @click="confirmDeleteArticle">Delete</QButton>
+      </template>
+    </QModal>
+
+    <QModal v-model:open="showConfirmCat" title="Delete shelf" size="sm">
+      <p class="confirm">Delete the shelf “{{ confirmCategory?.name }}”? Articles are not deleted.</p>
+      <template #footer>
+        <QButton variant="ghost" @click="showConfirmCat = false">Cancel</QButton>
+        <QButton variant="danger" @click="confirmDeleteCategory">Delete</QButton>
+      </template>
+    </QModal>
+
+    <QToastHost />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useStorage } from '@/composables/useStorage'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useLibraryStore } from '@/stores/library'
+import { useUiStore } from '@/stores/ui'
+import { useAiUsageStore } from '@/stores/ai-usage'
+import { useReaderStore } from '@/stores/reader'
 import { useTheme } from '@/composables/useTheme'
-import { useNotification } from '@/composables/useNotification'
-import { AIManager } from '@/utils/ai-manager'
-import { storage } from '@/utils/storage'
-import type { Article } from '@/types'
-import { AIProvider, SummaryType, getProviderDisplayName, getSummaryTypeDisplayName } from '@/types'
-import ManagerHeader from './components/ManagerHeader.vue'
-import ManagerSidebar from './components/ManagerSidebar.vue'
-import ArticleListContainer from './components/ArticleListContainer.vue'
-import PageHeader from './components/article-list/PageHeader.vue'
-import Toolbar from './components/article-list/Toolbar.vue'
-import ContentArea from './components/article-list/ContentArea.vue'
-import ArticleCard from './components/ArticleCard.vue'
-import SettingsModal from './modals/SettingsModal.vue'
-import ArticleModal from './modals/ArticleModal.vue'
-import ExportImportModal from './modals/ExportImportModal.vue'
-import CategoryModal from '@/components/CategoryModal.vue'
-import SummaryViewModal from './modals/SummaryViewModal.vue'
-import PodcastViewModal from './modals/PodcastViewModal.vue'
-import ToastNotifications from '@/components/ToastNotifications.vue'
-import ConfirmModal from '@/components/ConfirmModal.vue'
+import type { Article, Category } from '@/core/db'
+import { normalizeUrl, formatDateTime } from '@/core/format'
+import { groupArticle } from '@/core/ai'
+import AppHeader from './components/AppHeader.vue'
+import ContentsRail from './components/ContentsRail.vue'
+import EntryCard from './components/EntryCard.vue'
+import CommandPalette from './components/CommandPalette.vue'
+import CategoryEditor from './components/CategoryEditor.vue'
+import SettingsModal from './components/SettingsModal.vue'
+import Reader from './components/Reader.vue'
+import { QButton, QModal, QField, QSpinner, QToastHost, QIcon } from '@/design/primitives'
 
-const { articles, categories, tags, init, loadArticles, loadCategories, loadTags, updateArticle, deleteArticle } = useStorage()
-const { toggleTheme } = useTheme()
-const { success, error: showError } = useNotification()
+type EntryAction = 'open' | 'pin' | 'archive' | 'delete'
 
-// AI Manager instance
-const aiManager = new AIManager()
+const library = useLibraryStore()
+const ui = useUiStore()
+const usage = useAiUsageStore()
+const reader = useReaderStore()
+useTheme()
 
-// State
-const searchQuery = ref('')
-const currentView = ref('all')
-const currentCategoryId = ref('')
-const currentFilter = ref<{ readStatus?: string; tag?: string; source?: string }>({})
-const selectedArticles = ref(new Set<string>())
-const currentPage = ref(1)
-const itemsPerPage = ref(20)
-const sortBy = ref('date-desc')
-const isLoading = ref(false)
-const showBulkActions = ref(false)
-const showFilters = ref(false)
+const viewMode = ref<'list' | 'grid'>('list')
 const selectMode = ref(false)
+const revealing = ref(true) // one-shot load-in; cleared so filtering stays instant
 
-// Loading states for AI operations
-const summaryGeneratingArticles = ref(new Set<string>())
-const podcastGeneratingArticles = ref(new Set<string>())
+const showSettings = ref(false)
+const showCategory = ref(false)
+const showAdd = ref(false)
+const showUsage = ref(false)
+const showConfirm = ref(false)
+const showConfirmCat = ref(false)
 
-// Modal states
-const showSettingsModal = ref(false)
-const showArticleModal = ref(false)
-const showExportModal = ref(false)
-const showCategoryModal = ref(false)
-const showDeleteCategoryModal = ref(false)
-const showDeleteArticleModal = ref(false)
-const editingArticle = ref<Article | undefined>(undefined)
-const editingCategory = ref<any>(null)
-const categoryToDelete = ref<{ id: string; name: string } | null>(null)
-const articleToDelete = ref<string | null>(null)
+const editingCategory = ref<Category | null>(null)
+const confirmCategory = ref<Category | null>(null)
+const confirmArticleId = ref<string | null>(null)
 
-// Summary and Podcast modal states
-const showSummaryModal = ref(false)
-const showPodcastModal = ref(false)
-const selectedSummary = ref<any>(null)
-const selectedAudioFile = ref<any>(null)
-const selectedArticle = ref<Article | null>(null)
+const addUrl = ref('')
+const addTitle = ref('')
 
-// Stats
-const stats = computed(() => ({
-  total: articles.value.length,
-  unread: articles.value.filter(a => !a.organization.isRead && !a.organization.isArchived).length,
-  pinned: articles.value.filter(a => a.organization.isPinned).length,
-  archived: articles.value.filter(a => a.organization.isArchived).length,
-}))
-
-// Filtered articles
-const filteredArticles = computed(() => {
-  let filtered = articles.value
-
-  // Apply search
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(a =>
-      a.title.toLowerCase().includes(query) ||
-      a.domain.toLowerCase().includes(query) ||
-      a.organization.tags.some(tag => tag.toLowerCase().includes(query))
-    )
+const viewTitle = computed(() => {
+  switch (library.view) {
+    case 'unread':
+      return 'Reading List'
+    case 'reading':
+      return 'Currently Reading'
+    case 'favorites':
+      return 'Favorites'
+    case 'archived':
+      return 'Archive'
+    case 'category':
+      return library.categories.find((c) => c.id === library.activeKey)?.name ?? 'Shelf'
+    case 'tag':
+      return `#${library.activeKey}`
+    case 'source':
+      return library.activeKey
+    default:
+      return 'All Articles'
   }
-
-  // Apply view filter (navigation)
-  if (currentView.value === 'unread') {
-    filtered = filtered.filter(a => !a.organization.isRead && !a.organization.isArchived)
-  } else if (currentView.value === 'pinned') {
-    filtered = filtered.filter(a => a.organization.isPinned)
-  } else if (currentView.value === 'archived') {
-    filtered = filtered.filter(a => a.organization.isArchived)
-  } else if (currentView.value === 'category') {
-    filtered = filtered.filter(a => a.organization.category === currentCategoryId.value && !a.organization.isArchived)
-  } else if (currentView.value === 'all') {
-    filtered = filtered.filter(a => !a.organization.isArchived)
-  }
-
-  // Apply read status filter
-  if (currentFilter.value.readStatus === 'unread') {
-    filtered = filtered.filter(a => !a.organization.isRead)
-  } else if (currentFilter.value.readStatus === 'read') {
-    filtered = filtered.filter(a => a.organization.isRead)
-  }
-
-  // Apply source filter
-  if (currentFilter.value.source) {
-    filtered = filtered.filter(a => a.domain === currentFilter.value.source)
-  }
-
-  // Apply tag filter
-  if (currentFilter.value.tag) {
-    filtered = filtered.filter(a => a.organization.tags.includes(currentFilter.value.tag!))
-  }
-
-  // Sort
-  filtered.sort((a, b) => {
-    switch (sortBy.value) {
-      case 'date-desc':
-        return new Date(b.timestamps.dateAdded).getTime() - new Date(a.timestamps.dateAdded).getTime()
-      case 'date-asc':
-        return new Date(a.timestamps.dateAdded).getTime() - new Date(b.timestamps.dateAdded).getTime()
-      case 'title-asc':
-        return a.title.localeCompare(b.title)
-      case 'title-desc':
-        return b.title.localeCompare(a.title)
-      case 'domain-asc':
-        return a.domain.localeCompare(b.domain)
-      case 'domain-desc':
-        return b.domain.localeCompare(a.domain)
-      default:
-        return new Date(b.timestamps.dateAdded).getTime() - new Date(a.timestamps.dateAdded).getTime()
-    }
-  })
-
-  return filtered
 })
 
-// Paginated articles
-const totalPages = computed(() => Math.ceil(filteredArticles.value.length / itemsPerPage.value))
-const paginatedArticles = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  const end = start + itemsPerPage.value
-  return filteredArticles.value.slice(start, end)
+const emptyMessage = computed(() => {
+  if (library.search) return 'Nothing matches your search.'
+  if (library.view === 'unread') return 'All caught up — no unread articles.'
+  if (library.view === 'favorites') return 'Star an article to keep it close.'
+  if (library.view === 'archived') return 'The archive is empty.'
+  return 'Save your first article from the toolbar popup.'
 })
 
-// Popular tags
-const popularTags = computed(() => {
-  return tags.value
-    .sort((a, b) => b.usageCount - a.usageCount)
-    .slice(0, 10)
-})
-
-// Top sources
-const topSources = computed(() => {
-  const sourceCounts = new Map<string, number>()
-  articles.value.forEach(article => {
-    const domain = article.domain
-    sourceCounts.set(domain, (sourceCounts.get(domain) || 0) + 1)
-  })
-  
-  return Array.from(sourceCounts.entries())
-    .map(([domain, count]) => ({ domain, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10)
-})
-
-// Methods
-// Navigation methods
-const changeView = (view: string, categoryId?: string) => {
-  currentView.value = view
-  if (view === 'category' && categoryId) {
-    currentCategoryId.value = categoryId
-  } else {
-    currentCategoryId.value = ''
-  }
-  // Clear filters when changing views
-  currentFilter.value = {}
-  currentPage.value = 1
-  selectedArticles.value.clear()
+async function openInReader(article: Article): Promise<void> {
+  if (article.status === 'unread') await library.setStatus(article.id, 'reading')
+  await reader.open(article.id)
+}
+async function openArticleById(id: string): Promise<void> {
+  const article = library.articles.find((a) => a.id === id)
+  if (article) await openInReader(article)
+}
+async function closeReader(): Promise<void> {
+  reader.close()
+  await library.load()
 }
 
-// Filter methods
-const applyFilters = () => {
-  currentPage.value = 1
-}
-
-const clearFilters = () => {
-  currentFilter.value = {}
-  currentPage.value = 1
-}
-
-const hasActiveFilters = computed(() => {
-  return !!(currentFilter.value.readStatus || currentFilter.value.source || currentFilter.value.tag)
-})
-
-const activeFilterCount = computed(() => {
-  let count = 0
-  if (currentFilter.value.readStatus) count++
-  if (currentFilter.value.source) count++
-  if (currentFilter.value.tag) count++
-  return count
-})
-
-const toggleFilters = () => {
-  showFilters.value = !showFilters.value
-}
-
-const toggleSelectMode = () => {
-  // Enter select mode - enables checkboxes for manual selection
+function enterSelect(): void {
   selectMode.value = true
-  selectedArticles.value = new Set()
+  library.clearSelection()
 }
-
-const exitSelectMode = () => {
+function exitSelect(): void {
   selectMode.value = false
-  selectedArticles.value.clear()
+  library.clearSelection()
 }
-
-const clearSelection = () => {
-  selectedArticles.value.clear()
-  selectMode.value = false
+function toggleSelect(): void {
+  if (selectMode.value) exitSelect()
+  else enterSelect()
 }
+async function bulk(action: 'read' | 'pin' | 'archive' | 'delete' | 'group'): Promise<void> {
+  const ids = Array.from(library.selection)
+  if (!ids.length) return
 
-const toggleSelection = (articleId: string) => {
-  if (selectedArticles.value.has(articleId)) {
-    selectedArticles.value.delete(articleId)
-  } else {
-    selectedArticles.value.add(articleId)
-  }
-  selectedArticles.value = new Set(selectedArticles.value)
-}
-
-const toggleBulkMenu = () => {
-  showBulkActions.value = !showBulkActions.value
-}
-
-const handleArticleAction = async (data: { articleId: string; action: string }) => {
-  const { articleId, action } = data
-  const article = articles.value.find(a => a.id === articleId)
-  if (!article) {
+  if (action === 'group') {
+    ui.info('Grouping with AI…')
+    let grouped = 0
+    for (const id of ids) {
+      try {
+        await groupArticle(id)
+        grouped++
+      } catch (err) {
+        ui.error(err instanceof Error ? err.message : 'Grouping failed')
+        break
+      }
+    }
+    await library.load()
+    if (grouped) ui.success(`Grouped ${grouped} ${grouped === 1 ? 'entry' : 'entries'}`)
+    exitSelect()
     return
   }
-  
-  try {
-    switch (action) {
-      case 'read':
-        await updateArticle(articleId, {
-          organization: {
-            category: article.organization.category,
-            tags: [...article.organization.tags],
-            isPinned: article.organization.isPinned,
-            isArchived: article.organization.isArchived,
-            isRead: true
-          },
-          timestamps: {
-            dateAdded: article.timestamps.dateAdded,
-            lastAccessed: article.timestamps.lastAccessed,
-            dateRead: new Date().toISOString()
-          }
-        })
 
-        const updatedArticleRead = articles.value.find(a => a.id === articleId)
-        console.log('Article state AFTER read:', updatedArticleRead?.organization.isRead)
-        success('Marked as read')
-        break
-      case 'unread':
-        await updateArticle(articleId, {
-          organization: {
-            category: article.organization.category,
-            tags: [...article.organization.tags],
-            isPinned: article.organization.isPinned,
-            isArchived: article.organization.isArchived,
-            isRead: false
-          }
-        })
-        const updatedArticleUnread = articles.value.find(a => a.id === articleId)
-        console.log('Article state AFTER unread:', updatedArticleUnread?.organization.isRead)
-        success('Marked as unread')
-        break
-      case 'pin':
-        const newPinnedState = !article.organization.isPinned
-        await updateArticle(articleId, {
-          organization: {
-            category: article.organization.category,
-            tags: [...article.organization.tags],
-            isPinned: newPinnedState,
-            isArchived: article.organization.isArchived,
-            isRead: article.organization.isRead
-          }
-        })
-        const updatedArticlePin = articles.value.find(a => a.id === articleId)
-        console.log('Article state AFTER pin:', updatedArticlePin?.organization.isPinned)
-        success(newPinnedState ? 'Pinned' : 'Unpinned')
-        break
-      case 'archive':
-        const newArchivedState = !article.organization.isArchived
-        await updateArticle(articleId, {
-          organization: {
-            category: article.organization.category,
-            tags: [...article.organization.tags],
-            isPinned: article.organization.isPinned,
-            isArchived: newArchivedState,
-            isRead: article.organization.isRead
-          }
-        })
-        const updatedArticleArchive = articles.value.find(a => a.id === articleId)
-        console.log('Article state AFTER archive:', updatedArticleArchive?.organization.isArchived)
-        success(newArchivedState ? 'Archived' : 'Unarchived')
-        break
-      case 'ai-summary':
-        await generateAISummary(articleId)
-        break
-      case 'podcast':
-        await generatePodcast(articleId)
-        break
-      case 'delete':
-        // Set article to delete and show confirmation modal
-        articleToDelete.value = articleId
-        showDeleteArticleModal.value = true
-        break
-    }
-  } catch (err) {
-    console.error('Action failed with error:', err)
-    showError('Action failed')
+  for (const id of ids) {
+    if (action === 'read') await library.setStatus(id, 'read')
+    else if (action === 'pin') await library.togglePin(id)
+    else if (action === 'archive') await library.patchArticle(id, { status: 'archived' })
+    else if (action === 'delete') await library.remove(id)
+  }
+  ui.success(`${action} applied to ${ids.length} ${ids.length === 1 ? 'entry' : 'entries'}`)
+  exitSelect()
+}
+
+async function handleAction(article: Article, type: EntryAction): Promise<void> {
+  switch (type) {
+    case 'open':
+      return openInReader(article)
+    case 'pin':
+      await library.togglePin(article.id)
+      return
+    case 'archive':
+      await library.patchArticle(article.id, { status: article.status === 'archived' ? 'unread' : 'archived' })
+      return
+    case 'delete':
+      confirmArticleId.value = article.id
+      showConfirm.value = true
+      return
   }
 }
 
-const generateAISummary = async (articleId: string, type: SummaryType = SummaryType.CONCISE) => {
-  // Mark article as loading
-  summaryGeneratingArticles.value.add(articleId)
-  summaryGeneratingArticles.value = new Set(summaryGeneratingArticles.value) // Trigger reactivity
-  
+async function addByUrl(): Promise<void> {
+  const url = addUrl.value.trim()
+  if (!url) return
   try {
-    success(`Generating ${type} AI summary...`)
-    // Use AI Manager to generate summary with configured provider
-    await aiManager.generateSummary(articleId, type)
-    success('AI summary generated successfully!')
-    // Reload articles to show the new summary
-    await loadArticles()
-  } catch (err) {
-    console.error('Failed to generate summary:', err)
-    showError(err instanceof Error ? err.message : 'Failed to generate summary')
-  } finally {
-    // Remove from loading set
-    summaryGeneratingArticles.value.delete(articleId)
-    summaryGeneratingArticles.value = new Set(summaryGeneratingArticles.value) // Trigger reactivity
-  }
-}
-
-const generatePodcast = async (articleId: string) => {
-  // Mark article as loading
-  podcastGeneratingArticles.value.add(articleId)
-  podcastGeneratingArticles.value = new Set(podcastGeneratingArticles.value) // Trigger reactivity
-  
-  try {
-    success('Generating podcast... This may take a moment.')
-    
-    // Run podcast generation in background to prevent UI blocking
-    // Use setTimeout to yield control back to the browser
-    setTimeout(async () => {
-      try {
-        await aiManager.generatePodcast(articleId)
-        success('Podcast generated successfully!')
-        // Reload articles to show the new podcast
-        await loadArticles()
-      } catch (err) {
-        showError(err instanceof Error ? err.message : 'Failed to generate podcast')
-      } finally {
-        // Remove loading state
-        podcastGeneratingArticles.value.delete(articleId)
-        podcastGeneratingArticles.value = new Set(podcastGeneratingArticles.value) // Trigger reactivity
-      }
-    }, 100) // Small delay to allow UI to update
-  } catch (err) {
-    showError(err instanceof Error ? err.message : 'Failed to start podcast generation')
-    // Remove loading state on error
-    podcastGeneratingArticles.value.delete(articleId)
-    podcastGeneratingArticles.value = new Set(podcastGeneratingArticles.value) // Trigger reactivity
-  }
-}
-
-const viewSummary = async (articleId: string) => {
-  try {
-    const article = articles.value.find(a => a.id === articleId)
-    
-    if (!article || !article.summaryIds || article.summaryIds.length === 0) {
-      showError('No summary found for this article')
-      return
-    }
-
-    // Get all summaries for this article
-    const summaries = await storage.getSummariesForArticle(articleId)
-    
-    if (summaries.length === 0) {
-      showError('No summary found for this article')
-      return
-    }
-
-    // Prioritize concise summary for display (it's what users expect to see)
-    const conciseSummary = summaries.find(s => s.type === SummaryType.CONCISE)
-    const summaryToShow = conciseSummary || summaries[summaries.length - 1]
-
-    selectedSummary.value = summaryToShow
-    selectedArticle.value = article
-    showSummaryModal.value = true
-  } catch (err) {
-    console.error('Failed to view summary:', err)
-    showError('Failed to load summary')
-  }
-}
-
-const viewPodcast = async (articleId: string) => {
-  try {
-    const article = articles.value.find(a => a.id === articleId)
-    if (!article || !article.audioId) {
-      showError('No podcast found for this article')
-      return
-    }
-
-    // Get the audio file using the article's audioId (which is the summary ID)
-    const audioFile = await storage.getAudioFileBySummaryId(article.audioId)
-    
-    if (!audioFile) {
-      showError('Audio file not found')
-      return
-    }
-
-    selectedArticle.value = article
-    selectedAudioFile.value = audioFile
-    showPodcastModal.value = true
-  } catch (err) {
-    console.error('Failed to view podcast:', err)
-    showError('Failed to load podcast')
-  }
-}
-
-// Summary modal handlers
-const handleCopySummary = async (content: string) => {
-  try {
-    await navigator.clipboard.writeText(content)
-    success('Summary copied to clipboard!')
-  } catch (err) {
-    showError('Failed to copy summary')
-  }
-}
-
-const handleRegenerateSummary = async (articleId: string, type: SummaryType) => {
-  showSummaryModal.value = false
-  success('Regenerating summary...')
-  await generateAISummary(articleId, type)
-}
-
-const handleInjectSummary = async (article: Article, summary: any) => {
-  try {
-    // Get the article URL
-    if (!article.actualUrl && !article.cleanUrl) {
-      showError('Cannot inject summary: Article URL not found')
-      return
-    }
-    
-    const url = article.actualUrl || article.cleanUrl
-    
-    // Check if URL is a chrome:// or extension URL
-    if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('edge://')) {
-      showError('Cannot inject into browser or extension pages')
-      return
-    }
-    
-    // Find the tab with this URL
-    const tabs = await chrome.tabs.query({ url: url })
-    
-    let targetTab
-    if (tabs.length === 0) {
-      // No existing tab found - create a new one
-      targetTab = await chrome.tabs.create({ url: url })
-      
-      // Wait for the tab to load before injecting
-      await new Promise<void>((resolve) => {
-        const listener = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
-          if (tabId === targetTab!.id && changeInfo.status === 'complete') {
-            chrome.tabs.onUpdated.removeListener(listener)
-            resolve()
-          }
-        }
-        chrome.tabs.onUpdated.addListener(listener)
-        
-        // Timeout after 15 seconds
-        setTimeout(() => {
-          chrome.tabs.onUpdated.removeListener(listener)
-          resolve()
-        }, 15000)
-      })
-      
-      // Give content script extra time to initialize after page load
-      await new Promise(resolve => setTimeout(resolve, 1000))
-    } else {
-      // Tab exists - focus it
-      targetTab = tabs[0]
-      await chrome.tabs.update(targetTab.id!, { active: true })
-      
-      // Also focus the window
-      if (targetTab.windowId) {
-        await chrome.windows.update(targetTab.windowId, { focused: true })
-      }
-    }
-    
-    // Wait for content script to be ready by pinging it
-    const waitForContentScript = async (retries = 15, delay = 500): Promise<void> => {
-      for (let i = 0; i < retries; i++) {
-        try {
-          await chrome.tabs.sendMessage(targetTab.id!, { action: 'ping' })
-          return // Content script is ready
-        } catch (err) {
-          if (i === retries - 1) {
-            throw new Error('Content script not loaded. The page may be blocking scripts, or you may need to refresh the page.')
-          }
-          // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, delay))
-        }
-      }
-    }
-    
-    await waitForContentScript()
-    
-    // Now send the actual message
-    await chrome.tabs.sendMessage(targetTab.id!, {
-      action: 'injectSummary',
-      summary: summary.content,
-      metadata: {
-        provider: summary.aiProvider,
-        type: summary.type,
-        date: summary.generatedDate
-      }
+    await library.addArticle({
+      url: { actual: url, clean: normalizeUrl(url) },
+      title: addTitle.value.trim() || url,
+      content: { text: '', format: 'text' },
     })
-    
-    success('Summary injected into page!')
-    showSummaryModal.value = false
+    ui.success('Added to library')
+    addUrl.value = ''
+    addTitle.value = ''
+    showAdd.value = false
   } catch (err) {
-    console.error('Failed to inject summary:', err)
-    showError(err instanceof Error ? err.message : 'Failed to inject summary into page.')
+    ui.error(err instanceof Error ? err.message : 'Failed to add')
   }
 }
 
-// Podcast modal handlers
-const handleRegeneratePodcast = async (articleId: string) => {
-  showPodcastModal.value = false
-  success('Regenerating podcast...')
-  await generatePodcast(articleId)
-}
-
-const handleInjectPodcast = async (article: Article, audioFile: any, audioUrl: string) => {
-  if (!audioUrl) {
-    showError('Cannot inject: Audio URL is missing')
-    return
-  }
-  
-  try {
-    // Get the article URL
-    if (!article.actualUrl && !article.cleanUrl) {
-      showError('Cannot inject podcast: Article URL not found')
-      return
-    }
-    
-    const url = article.actualUrl || article.cleanUrl
-    
-    // Check if URL is a chrome:// or extension URL
-    if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('edge://')) {
-      showError('Cannot inject into browser or extension pages')
-      return
-    }
-    
-    // Convert blob URL to data URL for cross-context compatibility
-    let dataUrl = audioUrl
-    if (audioUrl.startsWith('blob:')) {
-      try {
-        const response = await fetch(audioUrl)
-        const blob = await response.blob()
-        dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onloadend = () => resolve(reader.result as string)
-          reader.onerror = reject
-          reader.readAsDataURL(blob)
-        })
-      } catch (err) {
-        console.error('Failed to convert blob to data URL:', err)
-        showError('Failed to prepare audio for injection')
-        return
-      }
-    }
-    
-    // Find the tab with this URL
-    const tabs = await chrome.tabs.query({ url: url })
-    
-    let targetTab
-    if (tabs.length === 0) {
-      // No existing tab found - create a new one
-      targetTab = await chrome.tabs.create({ url: url })
-      
-      // Wait for the tab to load before injecting
-      await new Promise<void>((resolve) => {
-        const listener = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo) => {
-          if (tabId === targetTab!.id && changeInfo.status === 'complete') {
-            chrome.tabs.onUpdated.removeListener(listener)
-            resolve()
-          }
-        }
-        chrome.tabs.onUpdated.addListener(listener)
-        
-        // Timeout after 15 seconds
-        setTimeout(() => {
-          chrome.tabs.onUpdated.removeListener(listener)
-          resolve()
-        }, 15000)
-      })
-      
-      // Give content script extra time to initialize after page load
-      await new Promise(resolve => setTimeout(resolve, 1000))
-    } else {
-      // Tab exists - focus it
-      targetTab = tabs[0]
-      await chrome.tabs.update(targetTab.id!, { active: true })
-      
-      // Also focus the window
-      if (targetTab.windowId) {
-        await chrome.windows.update(targetTab.windowId, { focused: true })
-      }
-    }
-    
-    // Wait for content script to be ready by pinging it
-    const waitForContentScript = async (retries = 15, delay = 500): Promise<void> => {
-      for (let i = 0; i < retries; i++) {
-        try {
-          await chrome.tabs.sendMessage(targetTab.id!, { action: 'ping' })
-          return // Content script is ready
-        } catch (err) {
-          if (i === retries - 1) {
-            throw new Error('Content script not loaded. The page may be blocking scripts, or you may need to refresh the page.')
-          }
-          // Wait before retry
-          await new Promise(resolve => setTimeout(resolve, delay))
-        }
-      }
-    }
-    
-    await waitForContentScript()
-    
-    // Now send the actual message
-    await chrome.tabs.sendMessage(targetTab.id!, {
-      action: 'injectPodcast',
-      podcastData: {
-        audioUrl: dataUrl,
-        provider: audioFile.provider,
-        duration: audioFile.duration,
-        date: audioFile.generatedDate,
-        voiceName: audioFile.voiceId
-      }
-    })
-    
-    success('Podcast injected into page!')
-    
-    // Close the modal after successful injection
-    showPodcastModal.value = false
-  } catch (err) {
-    console.error('Failed to inject podcast:', err)
-    showError(err instanceof Error ? err.message : 'Failed to inject podcast into page.')
-  }
-}
-
-const formatDuration = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
-
-const formatProvider = (provider: string): string => {
-  try {
-    const aiProvider = provider as AIProvider
-    return getProviderDisplayName(aiProvider)
-  } catch {
-    return provider.charAt(0).toUpperCase() + provider.slice(1)
-  }
-}
-
-const handleBulkAction = async (action: string) => {
-  const count = selectedArticles.value.size
-  showBulkActions.value = false
-
-  try {
-    for (const articleId of selectedArticles.value) {
-      await handleArticleAction({ articleId, action })
-    }
-    selectedArticles.value.clear()
-    success(`${action} applied to ${count} articles`)
-  } catch (err) {
-    showError('Bulk action failed')
-  }
-}
-
-const openArticle = async (articleId: string) => {
-  const article = articles.value.find(a => a.id === articleId)
-  if (article) {
-    // Open the article in a new tab
-    await chrome.tabs.create({ url: article.actualUrl })
-    
-    // Update article to mark as read with proper object construction
-    await updateArticle(articleId, {
-      organization: {
-        category: article.organization.category,
-        tags: [...article.organization.tags],
-        isPinned: article.organization.isPinned,
-        isArchived: article.organization.isArchived,
-        isRead: true  // Mark as read
-      },
-      timestamps: {
-        dateAdded: article.timestamps.dateAdded,
-        lastAccessed: new Date().toISOString(),
-        dateRead: new Date().toISOString()
-      }
-    })
-    
-    // Immediately update local state for instant UI feedback
-    const localArticle = articles.value.find(a => a.id === articleId)
-    if (localArticle) {
-      localArticle.organization.isRead = true
-      localArticle.timestamps.lastAccessed = new Date().toISOString()
-      localArticle.timestamps.dateRead = new Date().toISOString()
-    }
-  }
-}
-
-const goToPage = (page: number) => {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-}
-
-const getCategoryCount = (categoryId: string) => {
-  return articles.value.filter(a => a.organization.category === categoryId && !a.organization.isArchived).length
-}
-
-const getViewTitle = () => {
-  if (currentView.value === 'all') return 'All Articles'
-  if (currentView.value === 'unread') return 'Reading List'
-  if (currentView.value === 'pinned') return 'Favorites'
-  if (currentView.value === 'archived') return 'Archive'
-  if (currentView.value === 'category') {
-    const cat = categories.value.find(c => c.id === currentCategoryId.value)
-    return cat ? cat.name : 'Category'
-  }
-  if (currentFilter.value.source) return currentFilter.value.source
-  if (currentFilter.value.tag) return `#${currentFilter.value.tag}`
-  return 'Articles'
-}
-
-const getEmptyStateMessage = () => {
-  if (searchQuery.value) return 'No articles match your search'
-  if (currentView.value === 'unread') return 'All caught up! No unread articles.'
-  if (currentView.value === 'pinned') return 'Pin your favorite articles'
-  if (currentView.value === 'archived') return 'No archived articles'
-  return 'Start saving articles to build your library'
-}
-
-const showAddArticleModal = () => {
-  editingArticle.value = undefined
-  showArticleModal.value = true
-}
-
-const showSettings = () => {
-  showSettingsModal.value = true
-}
-
-const showExportImport = () => {
-  showExportModal.value = true
-}
-
-const handleArticleSaved = async () => {
-  await loadArticles()
-}
-
-const handleDataImported = async () => {
-  await loadArticles()
-  await loadCategories()
-  await loadTags()
-}
-
-const openAIDashboard = async () => {
-  const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (currentTab?.id) {
-    await chrome.tabs.update(currentTab.id, { url: chrome.runtime.getURL('src/ai-dashboard/index.html') })
-  }
-}
-
-const showCreateCategoryModal = () => {
+function openNewCategory(): void {
   editingCategory.value = null
-  showCategoryModal.value = true
+  showCategory.value = true
 }
-
-const handleEditCategory = (category: any) => {
+function openEditCategory(category: Category): void {
   editingCategory.value = category
-  showCategoryModal.value = true
+  showCategory.value = true
 }
-
-const handleDeleteCategory = async (categoryId: string) => {
+async function saveCategory(payload: { id?: string; name: string; color: string }): Promise<void> {
   try {
-    // Check if category has articles
-    const articleCount = getCategoryCount(categoryId)
-    if (articleCount > 0) {
-      showError(`Cannot delete category with ${articleCount} articles. Move or delete articles first.`)
-      return
-    }
-    
-    const category = categories.value.find(c => c.id === categoryId)
-    if (!category) return
-    
-    // Set category to delete and show confirmation modal
-    categoryToDelete.value = { id: category.id, name: category.name }
-    showDeleteCategoryModal.value = true
-  } catch (err) {
-    showError('Failed to delete category')
-    console.error('Error deleting category:', err)
+    if (payload.id) await library.updateCategory({ id: payload.id, name: payload.name, color: payload.color })
+    else await library.createCategory(payload.name, payload.color)
+    ui.success('Shelf saved')
+  } catch {
+    ui.error('Could not save shelf')
   }
 }
-
-const confirmDeleteCategory = async () => {
-  if (!categoryToDelete.value) return
-  
-  try {
-    const { id, name } = categoryToDelete.value
-    
-    // Remove from categories array
-    categories.value = categories.value.filter(c => c.id !== id)
-    
-    // Save to storage
-    await chrome.storage.local.set({ categories: categories.value })
-    
-    success(`Category "${name}" deleted successfully!`)
-    
-    // If currently viewing this category, switch to all articles
-    if (currentView.value === 'category' && currentCategoryId.value === id) {
-      changeView('all')
-    }
-    
-    // Close modal and reset state
-    showDeleteCategoryModal.value = false
-    categoryToDelete.value = null
-  } catch (err) {
-    showError('Failed to delete category')
-    console.error('Error deleting category:', err)
+function handleDeleteCategory(category: Category): void {
+  if (library.categoryCount(category.id) > 0) {
+    ui.error('Move or remove its articles first')
+    return
   }
+  confirmCategory.value = category
+  showConfirmCat.value = true
+}
+async function confirmDeleteCategory(): Promise<void> {
+  if (!confirmCategory.value) return
+  await library.deleteCategory(confirmCategory.value.id)
+  ui.success('Shelf deleted')
+  showConfirmCat.value = false
+  confirmCategory.value = null
 }
 
-const cancelDeleteCategory = () => {
-  categoryToDelete.value = null
-  showDeleteCategoryModal.value = false
+async function confirmDeleteArticle(): Promise<void> {
+  if (!confirmArticleId.value) return
+  await library.remove(confirmArticleId.value)
+  ui.success('Article deleted')
+  showConfirm.value = false
+  confirmArticleId.value = null
 }
 
-const confirmDeleteArticle = async () => {
-  if (!articleToDelete.value) return
-  
-  try {
-    await deleteArticle(articleToDelete.value)
-    success('Article deleted successfully!')
-    
-    // Close modal and reset state
-    showDeleteArticleModal.value = false
-    articleToDelete.value = null
-  } catch (err) {
-    showError('Failed to delete article')
-    console.error('Error deleting article:', err)
-  }
+async function openUsage(): Promise<void> {
+  await usage.load()
+  showUsage.value = true
 }
 
-const cancelDeleteArticle = () => {
-  articleToDelete.value = null
-  showDeleteArticleModal.value = false
+async function seedDefaultCategories(): Promise<void> {
+  if (library.categories.length) return
+  const defaults: [string, string][] = [
+    ['Essays', '#b23a2e'],
+    ['Development', '#3c6478'],
+    ['Research', '#7c5a9e'],
+    ['News', '#b9802a'],
+  ]
+  for (const [name, color] of defaults) await library.createCategory(name, color)
 }
 
-const handleCategoryCreated = async (categoryData: { name: string; color: string }) => {
-  try {
-    // Generate a unique ID for the category
-    const newCategory = {
-      id: `category_${Date.now()}`,
-      name: categoryData.name,
-      color: categoryData.color
-    }
-    
-    // Add to categories array
-    categories.value.push(newCategory)
-    
-    // Save to storage
-    await chrome.storage.local.set({ categories: categories.value })
-    
-    success(`Category "${categoryData.name}" created successfully!`)
-    
-    // Optionally switch to the new category view
-    changeView('category', newCategory.id)
-  } catch (err) {
-    showError('Failed to create category')
-    console.error('Error creating category:', err)
-  }
-}
-
-const handleCategoryUpdated = async (categoryData: { id: string; name: string; color: string }) => {
-  try {
-    // Find and update category
-    const categoryIndex = categories.value.findIndex(c => c.id === categoryData.id)
-    if (categoryIndex === -1) return
-    
-    categories.value[categoryIndex] = {
-      ...categories.value[categoryIndex],
-      name: categoryData.name,
-      color: categoryData.color
-    }
-    
-    // Save to storage
-    await chrome.storage.local.set({ categories: categories.value })
-    
-    success(`Category "${categoryData.name}" updated successfully!`)
-  } catch (err) {
-    showError('Failed to update category')
-    console.error('Error updating category:', err)
+function onKeydown(e: KeyboardEvent): void {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault()
+    ui.toggleCommandPalette()
   }
 }
 
 onMounted(async () => {
-  isLoading.value = true
-  await init()
-  await loadArticles()
-  await loadCategories()
-  await loadTags()
-  isLoading.value = false
+  await library.load()
+  await seedDefaultCategories()
+  window.addEventListener('keydown', onKeydown)
+  window.setTimeout(() => (revealing.value = false), 1500)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
 })
 </script>
 
 <style>
-/* Manager page-specific global styles */
+html,
 body {
-  background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
-  overflow: hidden;
-  height: 100vh;
+  height: 100%;
 }
-
-.app-container {
+#app {
   height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.main-content {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
 }
 </style>
 
 <style scoped>
-/* AI Feature Content Styles */
-.ai-feature-content {
+.app {
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  overflow: hidden;
 }
-
-.ai-feature-meta {
+.app__main {
+  flex: 1;
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
+  min-height: 0;
 }
 
-.type-badge {
-  padding: 2px 6px;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  background: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
-  border: 1px solid rgba(139, 92, 246, 0.15);
-  letter-spacing: 0.02em;
+/* One-shot orchestrated load-in (see base.css @keyframes q-rise). */
+.q-reveal .reveal-block {
+  animation: q-rise var(--dur-slow) var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
-
-.model-badge {
-  padding: 2px 6px;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: 500;
-  background: rgba(107, 114, 128, 0.08);
-  color: #6b7280;
-  border: 1px solid rgba(107, 114, 128, 0.12);
+.q-reveal .reveal-item {
+  animation: q-rise var(--dur) var(--ease-out) backwards;
+  animation-delay: calc(120ms + var(--stagger) * var(--i, 0));
 }
-
-.voice-badge {
-  padding: 2px 6px;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: 500;
-  background: rgba(6, 182, 212, 0.1);
-  color: #0891b2;
-  border: 1px solid rgba(6, 182, 212, 0.15);
-}
-
-.duration-badge {
-  padding: 2px 6px;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: 600;
-  background: rgba(11, 60, 73, 0.1);
-  color: #0B3C49;
-  border: 1px solid rgba(11, 60, 73, 0.15);
-}
-
-.provider-badge {
-  padding: 2px 6px;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.provider-badge.openai {
-  background: rgba(16, 163, 127, 0.1);
-  color: #10a37f;
-  border: 1px solid rgba(16, 163, 127, 0.15);
-}
-
-.provider-badge.gemini {
-  background: rgba(66, 133, 244, 0.1);
-  color: #4285f4;
-  border: 1px solid rgba(66, 133, 244, 0.15);
-}
-
-.provider-badge.elevenlabs {
-  background: rgba(124, 58, 237, 0.1);
-  color: #7c3aed;
-  border: 1px solid rgba(124, 58, 237, 0.15);
-}
-
-/* View AI Button */
-.view-ai-btn {
-  padding: 6px 12px;
-  background: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-5) var(--space-7);
+  max-width: 1100px;
   width: 100%;
+  margin: 0 auto;
+}
+.page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: var(--space-3);
+}
+.page-head__title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-2xl);
+  letter-spacing: var(--tracking-tight);
+}
+.page-head__count {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: var(--space-2) 0 var(--space-4);
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: var(--space-4);
+}
+.toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.toolbar__bulk {
+  width: 100%;
+  justify-content: space-between;
+}
+.bulk__count {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--ink-muted);
+}
+.select {
+  position: relative;
+}
+.select select {
+  appearance: none;
+  font-family: var(--font-serif);
+  font-size: var(--text-sm);
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  padding: 0.35rem 1.8rem 0.35rem 0.6rem;
+  cursor: pointer;
+}
+.select::after {
+  content: '▾';
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+.view-toggle {
+  display: flex;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.view-toggle button {
+  border: 0;
+  background: var(--paper-raised);
+  color: var(--ink-muted);
+  padding: 0.3rem 0.55rem;
+  cursor: pointer;
+}
+.view-toggle button.on {
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+
+/* Floating bulk-action bar */
+.bulkbar {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-5);
+  transform: translateX(-50%);
+  z-index: var(--z-nav);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.5rem 0.4rem 0.9rem;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+}
+.bulkbar__count {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.bulkbar__rule {
+  width: 1px;
+  height: 20px;
+  background: var(--rule);
+}
+.bulkbar__act {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: var(--text-sm);
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.bulkbar__act:hover:not(:disabled) {
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+.bulkbar__act:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.bulkbar__act--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--critical) 14%, transparent);
+  color: var(--critical);
+}
+.bulkbar__done {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-serif);
+  font-size: var(--text-sm);
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+.bulkbar-enter-active,
+.bulkbar-leave-active {
+  transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
+}
+.bulkbar-enter-from,
+.bulkbar-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 12px);
+}
+.list {
+  display: flex;
+  flex-direction: column;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  gap: 0.8rem;
+  padding: var(--space-12) 0;
 }
-
-.view-ai-btn:hover {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: rgba(139, 92, 246, 0.3);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
+.state__mark {
+  color: var(--accent);
 }
-
-.view-ai-btn:active {
-  transform: translateY(0);
+.state__text {
+  color: var(--ink-muted);
+  font-style: italic;
 }
-
-/* Podcast-specific button styling */
-.article-card__ai-section--podcast .view-ai-btn {
-  background: rgba(6, 182, 212, 0.1);
-  color: #06b6d4;
-  border-color: rgba(6, 182, 212, 0.2);
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: var(--space-5) 0;
 }
-
-.article-card__ai-section--podcast .view-ai-btn:hover {
-  background: rgba(6, 182, 212, 0.15);
-  border-color: rgba(6, 182, 212, 0.3);
-  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.15);
+.pager__label {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+}
+.add-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.usage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.usage__row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--text-base);
+}
+.usage__row span {
+  color: var(--ink-muted);
+}
+.usage__row strong {
+  font-family: var(--font-mono);
+}
+.activity {
+  margin-top: var(--space-5);
+}
+.activity__title {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 0.5rem;
+}
+.activity__row {
+  display: grid;
+  grid-template-columns: 1fr auto auto 1.2rem;
+  gap: 0.6rem;
+  align-items: baseline;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--text-sm);
+}
+.activity__prov,
+.activity__when {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+}
+.activity__status {
+  color: var(--critical);
+  text-align: center;
+}
+.activity__status--ok {
+  color: var(--positive);
+}
+.confirm {
+  color: var(--ink-muted);
+  line-height: var(--leading-normal);
 }
 </style>

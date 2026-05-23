@@ -53,8 +53,7 @@ export default defineManifest({
   web_accessible_resources: [
     {
       resources: [
-        'src/manager/index.html',
-        'src/ai-dashboard/index.html'
+        'src/manager/index.html'
       ],
       matches: ['<all_urls>']
     }

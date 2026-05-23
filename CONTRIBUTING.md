@@ -11,6 +11,7 @@ Thanks for your interest in contributing! We welcome contributions of all kinds:
 - [Project Structure](#project-structure)
 - [Architecture](#architecture)
 - [Code Style Guidelines](#code-style-guidelines)
+- [Testing](#testing)
 - [Pull Request Guidelines](#pull-request-guidelines)
 - [Building & Releases](#building--releases)
 - [Troubleshooting](#troubleshooting)
@@ -22,8 +23,8 @@ Thanks for your interest in contributing! We welcome contributions of all kinds:
 ### Prerequisites
 
 - **Node.js** 18.x or higher
-- **npm** or **yarn**
-- **Google Chrome** browser
+- **npm** (or yarn)
+- **Google Chrome** or **Microsoft Edge**
 
 ### Setup
 
@@ -41,17 +42,16 @@ cd quest
 npm install
 ```
 
-4. Start development server:
+4. Start the dev server:
 
 ```bash
 npm run dev
 ```
 
-5. Load extension in Chrome:
-   - Open `chrome://extensions/`
-   - Enable **Developer mode** (toggle in top right)
-   - Click **Load unpacked**
-   - Select the `dist/` folder from your project directory
+5. Load the extension:
+   - Chrome: open `chrome://extensions/` — Edge: open `edge://extensions/`
+   - Enable **Developer mode**
+   - Click **Load unpacked** and select the `dist/` folder
 
 ---
 
@@ -60,17 +60,13 @@ npm run dev
 ### Available Commands
 
 ```bash
-# Start dev server with HMR (Hot Module Replacement)
-npm run dev
-
-# Type checking (no build)
-npm run type-check
-
-# Production build
-npm run build
-
-# Preview production build
-npm run preview
+npm run dev          # Dev server with HMR
+npm run build        # Type-check + production build → dist/ (and release/release.zip)
+npm run preview      # Preview the production build
+npm run type-check   # vue-tsc, no emit
+npm test             # Vitest (watch)
+npm run test:run     # Vitest (single run)
+npm run test:coverage # Vitest with coverage
 ```
 
 ### Development Process
@@ -81,29 +77,25 @@ npm run preview
 git checkout -b feature/my-awesome-feature
 ```
 
-2. Make your changes
-   - Hot Module Replacement updates the extension instantly
-   - No manual reload required in most cases
-   - For manifest changes, reload extension in `chrome://extensions/`
+2. Make your changes. HMR updates the popup and library pages quickly.
 
-3. Test your changes thoroughly
-   - Verify in both light and dark mode
-   - Test all affected features
-   - Check console for errors
+   > **Content-script note:** every build replaces the content-script files. If
+   > you've loaded `dist/`, reload the extension at `chrome://extensions/` and
+   > reload any open page after a build — otherwise the page keeps the old
+   > content script (this is the usual reason live-page annotations seem to
+   > "disappear" during development).
 
-4. Run type checking:
+3. Test in both **Paper** (light) and **Ink** (dark) themes, and check the
+   service-worker console (`chrome://extensions/` → *Service worker*).
+
+4. Run the checks:
 
 ```bash
 npm run type-check
+npm run test:run
 ```
 
-5. Commit your changes with a descriptive message:
-
-```bash
-git commit -m "feat(ai): add Gemini TTS provider selection"
-```
-
-6. Push to your fork and open a Pull Request
+5. Commit with a descriptive message and open a Pull Request.
 
 ---
 
@@ -112,77 +104,71 @@ git commit -m "feat(ai): add Gemini TTS provider selection"
 ```
 quest/
 ├── src/
-│   ├── popup/                    # Extension popup (360px width)
-│   │   ├── App.vue               # Main popup component
-│   │   ├── components/           # Popup-specific components
-│   │   ├── index.html
-│   │   └── main.ts
-│   │
-│   ├── manager/                  # Article manager dashboard
-│   │   ├── App.vue               # Main manager component
-│   │   ├── components/           # Manager components
-│   │   │   ├── ArticleCard.vue
-│   │   │   ├── Toolbar.vue
-│   │   │   └── ...
-│   │   ├── modals/               # Modal components
-│   │   │   ├── SettingsModal.vue
-│   │   │   ├── SummaryModal.vue
-│   │   │   └── ...
-│   │   ├── index.html
-│   │   └── main.ts
-│   │
-│   ├── ai-dashboard/             # AI analytics dashboard
+│   ├── popup/                 # Toolbar popup (capture)
 │   │   ├── App.vue
-│   │   ├── components/
-│   │   │   ├── UsageStats.vue
-│   │   │   ├── AuditLogs.vue
-│   │   │   └── ...
 │   │   ├── index.html
 │   │   └── main.ts
 │   │
-│   ├── background/               # Background service worker
-│   │   └── index.ts              # Event handlers, alarms, auto-archive
+│   ├── manager/               # Library (opens in a tab)
+│   │   ├── App.vue            # Orchestrator: views, bulk bar, modals
+│   │   ├── components/
+│   │   │   ├── AppHeader.vue
+│   │   │   ├── ContentsRail.vue    # Views + shelves + tags
+│   │   │   ├── EntryCard.vue
+│   │   │   ├── CommandPalette.vue
+│   │   │   ├── CategoryEditor.vue
+│   │   │   ├── SettingsModal.vue
+│   │   │   └── Reader.vue          # Built-in reading view + Distill rail
+│   │   ├── index.html
+│   │   └── main.ts
 │   │
-│   ├── content/                  # Content scripts
-│   │   └── index.ts              # Article extraction, word count
+│   ├── background/            # MV3 service worker
+│   │   └── index.ts           # Message router, context menus, alarms, badge
 │   │
-│   ├── components/               # Shared components
-│   │   ├── Modal.vue
-│   │   ├── Button.vue
-│   │   ├── CategoryModal.vue
-│   │   └── ...
+│   ├── content/               # Content script
+│   │   └── index.ts           # Extraction, word count, live-page annotations
 │   │
-│   ├── composables/              # Vue composables
-│   │   ├── useStorage.ts         # IndexedDB operations
-│   │   ├── useTheme.ts           # Theme management
-│   │   └── useNotification.ts    # Toast notifications
+│   ├── core/                  # Framework-free domain logic
+│   │   ├── db/                # IndexedDB ('quest')
+│   │   │   ├── schema.ts          # Stores + indexes
+│   │   │   ├── connection.ts      # open/promisify/txStore helpers
+│   │   │   ├── migrate.ts         # One-time legacy (v1) → v2 import
+│   │   │   ├── types.ts
+│   │   │   ├── repos/             # articles, summaries, audio, highlights,
+│   │   │   │                      #   taxonomy (categories/tags), activity
+│   │   │   └── index.ts           # QuestDB facade (createArticle, addSummary, …)
+│   │   ├── ai/                # Provider abstraction + orchestration
+│   │   │   ├── providers/         # openai, gemini, elevenlabs, gemini-tts
+│   │   │   ├── summarize.ts       # summarizeArticle()
+│   │   │   ├── podcast.ts         # generatePodcast()
+│   │   │   ├── group.ts           # groupArticle() / categorizeArticle()
+│   │   │   ├── test-key.ts        # Lightweight API-key auth check
+│   │   │   ├── prompts.ts, config.ts, models.ts, voices.ts, audio.ts, audit.ts
+│   │   │   └── index.ts
+│   │   ├── keys.ts            # Encrypted API-key storage (Web Crypto)
+│   │   ├── messaging/         # Typed message map + router (messages.ts, bus.ts)
+│   │   ├── extraction/        # HTML sanitize / excerpt helpers
+│   │   ├── reader/            # Highlight re-anchoring
+│   │   ├── markdown.ts, format.ts, settings.ts
 │   │
-│   ├── utils/                    # Utility functions
-│   │   ├── storage.ts            # IndexedDB wrapper
-│   │   ├── ai-manager.ts         # AI integration logic
-│   │   ├── secure-api-keys.ts    # Encrypted API key storage
-│   │   ├── model-config.ts       # AI model configurations
-│   │   ├── voice-config.ts       # TTS voice configurations
-│   │   └── formatters.ts         # Date/time formatters
+│   ├── stores/                # Pinia stores
+│   │   ├── library.ts         # Articles, views, filters, sort, selection
+│   │   ├── reader.ts          # Open article, summaries, audio, highlights
+│   │   ├── settings.ts, aiUsage.ts, ui.ts, index.ts
 │   │
-│   ├── types/                    # TypeScript definitions
-│   │   ├── index.ts              # Main types
-│   │   └── ai-providers.ts       # AI provider enums
+│   ├── design/                # Design system
+│   │   ├── tokens.css, base.css, fonts.css
+│   │   └── primitives/        # QButton, QModal, QField, QIcon, QAudioPlayer, …
 │   │
-│   └── styles/                   # Global styles
-│       └── variables.css         # CSS variables (theme, colors)
+│   ├── composables/useTheme.ts
+│   └── types/                 # Shared + AI-provider types
 │
 ├── public/
-│   ├── icons/                    # Extension icons (16, 32, 48, 128)
-│   └── audio-processor.worker.js # Web Worker for audio processing
+│   ├── icons/                 # 16 / 32 / 48 / 128
+│   └── fonts/                 # Self-hosted woff2 (Fraunces, Newsreader, IBM Plex Mono)
 │
-├── .github/
-│   └── workflows/
-│       └── release.yml           # Automated releases with builds
-│
-├── manifest.config.ts            # Extension manifest configuration
-├── vite.config.ts                # Vite configuration
-├── tsconfig.json                 # TypeScript configuration
+├── manifest.config.ts         # MV3 manifest (CRXJS)
+├── vite.config.ts             # Vite + CRXJS + zip-pack
 └── package.json
 ```
 
@@ -190,57 +176,44 @@ quest/
 
 ## Architecture
 
-### Data Flow
+### Surfaces and data flow
 
 ```
-┌─────────────────┐
-│  Content Script │ (Extract article content)
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Popup/Manager  │ (User interaction)
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Background     │ (Service Worker)
-│  - Auto-archive │
-│  - Reminders    │
-│  - Notifications│
-└────────┬────────┘
-         │
-         ├──────────────┬──────────────┐
-         ▼              ▼              ▼
-┌──────────────┐ ┌──────────┐ ┌──────────────┐
-│  IndexedDB   │ │ Chrome   │ │ AI APIs      │
-│  (Articles)  │ │ Storage  │ │ (Summaries,  │
-│              │ │ (Settings│ │  Podcasts)   │
-└──────────────┘ └──────────┘ └──────────────┘
+┌──────────────┐        ┌──────────────────┐
+│   Popup      │        │  Library / Reader │   (Vue 3 + Pinia)
+│  (capture)   │        │   (manager)       │
+└──────┬───────┘        └─────────┬─────────┘
+       │  typed messages          │  direct calls
+       │  (core/messaging)        │
+       ▼                          ▼
+┌─────────────────┐        ┌──────────────────┐
+│  Background SW   │        │   core/db (facade)│
+│  - router        │───────▶│   IndexedDB       │
+│  - context menus │        └──────────────────┘
+│  - alarms/badge  │
+└──────┬───────────┘
+       │
+       ▼
+┌──────────────┐   ┌──────────────────┐
+│  core/ai     │──▶│ Provider APIs     │
+│  (providers) │   │ (OpenAI/Gemini/   │
+└──────────────┘   │  ElevenLabs)      │
+                   └──────────────────┘
+
+  Content script ◀── getPageAnnotations ──▶ renders summary pill + highlights
 ```
 
-### Key Components
-
-**Storage System** (`src/utils/storage.ts`)
-- Articles: Full article content with metadata
-- Summaries: AI-generated summaries with token usage
-- Audio Files: Podcast audio as Blobs
-- Categories: User-defined categories with colors
-- Tags: Tag usage tracking
-- Audit Logs: AI operation history
-
-**AI Manager** (`src/utils/ai-manager.ts`)
-- Handles all AI API calls
-- Manages model selection
-- Tracks token usage and costs
-- Stores API keys securely using Web Crypto API (AES-256-GCM)
-
-**Background Service Worker** (`src/background/index.ts`)
-- Auto-archive scheduler (runs daily via Chrome Alarms)
-- Reading reminders (alarm-based)
-- Article import/export
-- Context menu handlers
-- Notification management
+- **`core/`** is framework-free TypeScript. The UI (Vue) and the service worker
+  both depend on it; it depends on neither.
+- **`core/db`** owns IndexedDB. The `QuestDB` facade exposes higher-level
+  operations (`createArticle` deduped by clean URL, `addSummary`/`addAudio` which
+  are idempotent, `deleteArticle` which cascades to summaries/audio/highlights).
+- **`core/ai`** resolves provider config + key, calls the selected provider, and
+  writes results back through `core/db`, logging each operation to the audit log.
+- **`core/messaging`** is a typed `MessageMap`: add an action there and both
+  `sendMessage` and `createMessageRouter` become aware of it.
+- **`background`** is mostly thin handlers + browser-event plumbing (context
+  menus, the auto-archive alarm, the unread badge, marking a page read on visit).
 
 ---
 
@@ -248,76 +221,50 @@ quest/
 
 ### TypeScript
 
-- Use **TypeScript** for all new code
-- Avoid `any` types — use proper typing
-- Use **enums** for constants instead of string literals
-- Add **JSDoc comments** for exported functions
+- TypeScript everywhere; avoid `any`.
+- Keep `core/` free of Vue/Chrome-UI concerns so it stays testable in isolation.
+- Prefer small, pure functions; the AI/DB layers are stateless functions over a
+  shared facade, not singletons holding state.
 
-Example:
+### Vue
 
-```typescript
-/**
- * Generate an AI summary for an article
- * @param articleId - The ID of the article
- * @param type - The type of summary (concise or extended)
- * @returns Promise resolving to the generated summary
- */
-export async function generateSummary(
-  articleId: string,
-  type: SummaryType
-): Promise<Summary> {
-  // Implementation
-}
-```
-
-### Vue Components
-
-- Use **Composition API** with `<script setup>` syntax
-- Use **composables** for reusable logic (e.g., `useStorage`, `useTheme`)
-- Keep components focused and single-purpose
-- Extract complex logic into separate utility functions
-
-Example:
-
-```vue
-<script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useStorage } from '@/composables/useStorage'
-
-const { articles, loadArticles } = useStorage()
-const isLoading = ref(false)
-
-onMounted(async () => {
-  isLoading.value = true
-  await loadArticles()
-  isLoading.value = false
-})
-</script>
-```
+- Composition API with `<script setup lang="ts">`.
+- Shared logic lives in Pinia stores (`src/stores`) and composables.
+- Build UI from the `src/design/primitives` components rather than re-styling
+  ad-hoc; reach for tokens in `src/design/tokens.css` for color/spacing/type.
 
 ### CSS
 
-- Use **CSS variables** for theming (defined in `src/styles/variables.css`)
-- Prefer scoped styles in components
-- Follow existing color scheme for consistency
+- Use the design tokens (`var(--paper)`, `var(--ink)`, `var(--accent)`,
+  `var(--space-*)`, `var(--font-*)`, …). Don't hard-code colors.
+- Prefer scoped styles; use `:deep()` for sanitized v-html content.
+- Both themes must work — verify Paper and Ink.
 
-Example:
+### Comments
 
-```css
-.button {
-  background: var(--primary-color);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-}
+- Comment **why**, not what. Leave a note when a decision is non-obvious (a
+  workaround, an invariant, a security or ordering constraint).
+- Don't add comments that restate self-explanatory code, top-of-file banner
+  blocks, or decorative dividers.
+
+---
+
+## Testing
+
+Tests run on [Vitest](https://vitest.dev/) with `fake-indexeddb` and a DOM
+environment (`happy-dom` / `jsdom`).
+
+```bash
+npm test            # watch
+npm run test:run    # CI-style single run
+npm run test:coverage
 ```
 
-### General Guidelines
-
-- Keep commits small and focused
-- Write descriptive commit messages
-- No console statements in production code
-- Handle errors gracefully (use try/catch)
-- Test in both light and dark mode
+- Co-locate or mirror tests with the code they cover; `core/` logic (DB
+  migration, formatting, highlight re-anchoring, markdown) is the easiest and
+  most valuable to test because it has no UI dependencies.
+- DB tests should close and delete the database between cases so blocked
+  transactions don't leak across tests.
 
 ---
 
@@ -325,57 +272,34 @@ Example:
 
 ### Before Submitting
 
-1. Ensure type checks pass: `npm run type-check`
-2. Test your changes thoroughly
-3. Update documentation if behavior changes
-4. Add comments for complex logic
+1. `npm run type-check` passes
+2. `npm run test:run` passes
+3. Tested in both themes; no errors in the page or service-worker console
+4. Docs updated if behavior changed
 
 ### PR Requirements
 
 - **Target branch**: `main`
-- **Clear title and description**: Explain what and why
-- **Link related issues**: Use "Fixes #123" or "Closes #456"
-- **Keep PRs focused**: Large changes should be split into multiple PRs
-- **No breaking changes** without discussion
+- **Clear title and description**: explain what and why
+- **Link related issues**: "Fixes #123" / "Closes #456"
+- **Keep PRs focused**; split large changes
 
 ### Commit Message Format
 
-Use conventional commits format:
+Conventional commits:
 
 ```
 <type>(<scope>): <subject>
-
-<body>
-
-<footer>
 ```
 
-**Types:**
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, semicolons, etc.)
-- `refactor`: Code refactoring
-- `perf`: Performance improvements
-- `test`: Adding or updating tests
-- `chore`: Build process, dependencies, tooling
+**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
 
 **Examples:**
 
 ```
-feat(ai): add Gemini TTS provider with voice selection
+feat(reader): persist scroll position as reading progress
 
-- Add voice configuration for Gemini TTS
-- Update settings modal with voice dropdown
-- Add voice preview functionality
-
-Closes #42
-```
-
-```
-fix(storage): prevent duplicate articles when saving
-
-Check for existing URL before creating new article entry.
+fix(content): re-anchor highlights on slow SPA pages
 
 Fixes #38
 ```
@@ -390,41 +314,23 @@ Fixes #38
 npm run build
 ```
 
-Output in `dist/` directory includes:
-- Manifest JSON
-- Compiled JavaScript bundles
-- HTML pages
-- Assets and icons
+Outputs:
+- `dist/` — the unpacked extension (load this in the browser)
+- `release/release.zip` — a zipped build for store submission
 
 ### Automated Releases
 
-The project uses GitHub Actions for automated releases:
-
-1. Triggers on version tag push (e.g., `v1.0.0`)
-2. Builds the extension
-3. Creates a GitHub Release
-4. Uploads the `dist/` folder as a build artifact
-5. Generates release notes from commits
-
-**To create a release:**
+GitHub Actions builds and publishes a release on version-tag push:
 
 ```bash
-# Update version in package.json (patch, minor, or major)
-npm version patch
-
-# Push the tag
+npm version patch   # or minor / major — updates package.json (manifest reads from it)
 git push --follow-tags
 ```
 
-The GitHub Action will automatically build and create a release!
-
 ### Versioning
 
-We use [Semantic Versioning](https://semver.org/):
-
-- **Major** (1.0.0): Breaking changes
-- **Minor** (0.1.0): New features, backward compatible
-- **Patch** (0.0.1): Bug fixes, backward compatible
+[Semantic Versioning](https://semver.org/): **Major** (breaking), **Minor**
+(features), **Patch** (fixes). The manifest version is read from `package.json`.
 
 ---
 
@@ -432,88 +338,49 @@ We use [Semantic Versioning](https://semver.org/):
 
 ### Extension won't load
 
-- Ensure `dist/` folder exists (run `npm run dev` or `npm run build`)
-- Check for errors in `chrome://extensions/` (Developer mode enabled)
-- Look for console errors in the extension popup/pages
+- Ensure `dist/` exists (`npm run dev` or `npm run build`)
+- Check `chrome://extensions/` for errors (Developer mode on)
 
-### Hot Module Replacement not working
+### Live-page annotations / pill not showing after a build
 
-- Ensure dev server is running (`npm run dev`)
-- Check terminal for Vite errors
-- Try reloading the extension manually in `chrome://extensions/`
+- Reload the extension at `chrome://extensions/`, then reload the page. Each
+  build replaces the content-script files, so a previously loaded page still
+  references the old script.
 
-### Type check errors
+### HMR not working
 
-- Run `npm run type-check` to see all errors
-- Check for missing imports or incorrect types
-- Ensure all enums are properly imported
+- Confirm the dev server is running and check the terminal for Vite errors
+- Reload the extension manually
 
-### AI features not working in development
+### Type-check errors
 
-- Verify API keys are set in Settings
-- Check browser console for API errors
-- Ensure you have credits/quota with the AI provider
-- Check network tab for failed requests
+- `npm run type-check` to list them; check imports and types
+
+### AI features not working
+
+- Verify the API key in Settings and use **Test**
+- Check the provider dashboard for quota/credits
+- Watch the service-worker console for API errors
 
 ### Articles not saving
 
-- Check IndexedDB in DevTools → Application → IndexedDB
-- Verify content script is injecting properly
-- Look for errors in background service worker console (`chrome://extensions/` → Service Worker)
-
-### Build fails
-
-- Delete `node_modules` and reinstall: `rm -rf node_modules && npm install`
-- Delete `dist` folder and rebuild: `rm -rf dist && npm run build`
-- Check for TypeScript errors: `npm run type-check`
-
----
-
-## Testing Checklist
-
-Before submitting a PR, test:
-
-- [ ] Extension loads without errors
-- [ ] Popup opens and displays correctly
-- [ ] Manager dashboard loads all articles
-- [ ] Saving articles works (all methods: popup, context menu)
-- [ ] Categories and tags work correctly
-- [ ] Search and filtering work
-- [ ] Dark mode works correctly
-- [ ] Settings save and persist
-- [ ] AI features work (if applicable)
-- [ ] No console errors or warnings
-
----
-
-## Getting Help
-
-- **Questions**: [Open a discussion](../../discussions)
-- **Bug reports**: [Open an issue](../../issues)
-- **Feature requests**: [Open a discussion](../../discussions) first
+- Inspect IndexedDB in DevTools → Application → IndexedDB (`quest`)
+- Check the service-worker console
 
 ---
 
 ## Code of Conduct
 
-Be respectful and inclusive. We expect all contributors to:
-
-- Use welcoming and inclusive language
-- Be respectful of differing viewpoints
-- Accept constructive criticism gracefully
-- Focus on what's best for the community
-- Show empathy towards other contributors
+Be respectful and inclusive. Use welcoming language, accept constructive
+criticism gracefully, and focus on what's best for the community.
 
 ---
 
 ## Security
 
-If you discover a security vulnerability, please **do not open a public issue**. Instead:
-
-1. Email the maintainers directly (check repository for contact info)
-2. Or create a [private security report](../../security/advisories/new)
-
-We take security seriously and will respond promptly.
+If you discover a security vulnerability, please **do not open a public issue**.
+Instead, create a [private security report](../../security/advisories/new) or
+contact the maintainers directly.
 
 ---
 

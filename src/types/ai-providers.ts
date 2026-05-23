@@ -1,9 +1,4 @@
 /**
- * AI Provider Type Definitions
- * Centralized type system for AI providers used across the application
- */
-
-/**
  * AI Provider Enum
  * Use this instead of string literals throughout the app
  */

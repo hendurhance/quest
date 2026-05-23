@@ -1,473 +1,575 @@
 <template>
-  <div class="container">
-    <!-- Header -->
-    <Header @toggle-theme="toggleTheme" @open-manager="openManager" />
+  <div class="capture">
+    <header class="masthead">
+      <div class="wordmark">
+        <QIcon name="bookmark" :size="18" class="wordmark__mark" />
+        <span class="wordmark__name">Quest</span>
+      </div>
+      <div class="masthead__actions">
+        <button class="icon-btn" :title="theme === 'dark' ? 'Light mode' : 'Ink mode'" @click="toggleTheme">
+          <QIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="16" />
+        </button>
+        <button class="icon-btn" title="Open library" @click="openLibrary">
+          <QIcon name="book-open" :size="16" />
+        </button>
+      </div>
+    </header>
 
-    <!-- Current Page -->
-    <CurrentPage
-      :favicon="currentPage.favicon || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIj48cmVjdCB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9IiNkZGQiIHJ4PSIzIi8+PHBhdGggZD0iTTEyIDIyYzUuNTIzIDAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMlMyIDYuNDc3IDIgMTJzNC40NzcgMTAgMTAgMTB6IiBmaWxsPSIjOTk5Ii8+PHBhdGggZD0iTTEyIDEwYzEuMSAwIDItLjkgMi0ycy0uOS0yLTItMi0yIC45LTIgMiAuOSAyIDIgMnoiIGZpbGw9IiNmZmYiLz48L3N2Zz4='"
-      :title="currentPage.title"
-      :domain="currentPage.domain"
-      :reading-time="currentPage.readingTime"
-    />
+    <section class="page-card">
+      <div class="page-card__top">
+        <img v-if="page.favicon" class="page-card__favicon" :src="page.favicon" alt="" />
+        <div class="page-card__head">
+          <h1 class="page-card__title">{{ page.title }}</h1>
+          <p class="page-card__meta">
+            <span>{{ page.domain || '—' }}</span>
+            <span class="dot">·</span>
+            <span>{{ page.readingTime }}</span>
+          </p>
+        </div>
+      </div>
+    </section>
 
-    <!-- Save Section -->
-    <SaveSection
-      v-model:tags-input="tagsInput"
-      v-model:selected-category="selectedCategory"
-      v-model:close-tab-after-save="closeTabAfterSave"
-      v-model:generate-summary="generateSummary"
-      v-model:create-podcast="createPodcast"
-      :is-saving="isSaving"
-      :is-already-saved="isAlreadySaved"
-      :categories="categories"
-      :all-tags="allTags"
-      @save="saveCurrentArticle"
-      @create-category="showCategoryModal = true"
-    />
+    <section class="form" v-if="!isSaved">
+      <div class="field">
+        <span class="field__label">Tags</span>
+        <div class="tags-input" :class="{ 'is-focused': tagFocused }">
+          <QTag v-for="t in tags" :key="t" removable @remove="removeTag(t)">{{ t }}</QTag>
+          <input
+            v-model="tagInput"
+            class="tags-input__field"
+            :placeholder="tags.length ? '' : 'Add tags, comma-separated'"
+            @keydown="onTagKey"
+            @focus="tagFocused = true"
+            @blur="tagFocused = false"
+          />
+        </div>
+        <div v-if="suggestions.length" class="suggestions">
+          <button v-for="s in suggestions" :key="s" class="suggestion" type="button" @mousedown.prevent="addTag(s)">
+            + {{ s }}
+          </button>
+        </div>
+      </div>
 
-    <!-- Quick Stats -->
-    <QuickStats
-      :total-articles="stats.totalSaved"
-      :unread-articles="stats.unread"
-      :read-today="stats.readToday"
-    />
+      <label class="field">
+        <span class="field__label">Shelf</span>
+        <div class="select">
+          <select v-model="categoryId">
+            <option value="">Uncategorized</option>
+            <option v-for="c in library.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+          </select>
+        </div>
+      </label>
 
-    <!-- Recent Items -->
-    <RecentItems
-      title="Recent Saves"
-      :items="recentArticlesFormatted"
-      empty-message="No articles saved yet"
-      @item-click="handleItemClick"
-    />
+      <div class="toggles">
+        <div class="toggle">
+          <span class="toggle__text">AI summary on save</span>
+          <QSwitch v-model="generateSummary" />
+        </div>
+        <div class="toggle">
+          <span class="toggle__text">Generate podcast</span>
+          <QSwitch v-model="generatePodcast" />
+        </div>
+        <div class="toggle">
+          <span class="toggle__text">Close tab after saving</span>
+          <QSwitch v-model="closeTabAfterSave" />
+        </div>
+      </div>
 
-    <!-- Quick Actions -->
-    <QuickActions @open-manager="openManager" @open-random="openRandomArticle" />
+      <QButton variant="primary" size="lg" block :loading="isSaving" @click="save">
+        {{ isSaving ? 'Saving…' : 'Save to Quest' }}
+      </QButton>
+    </section>
+
+    <section v-else class="saved">
+      <QIcon name="check" :size="28" class="saved__mark" />
+      <p class="saved__text">Saved to your library.</p>
+      <QButton variant="secondary" size="md" @click="openLibrary">Open library</QButton>
+    </section>
+
+    <QRule />
+
+    <footer class="footer">
+      <p class="footer__stats">
+        <strong>{{ library.stats.total }}</strong> saved
+        <span class="dot">·</span>
+        <strong>{{ library.stats.unread }}</strong> unread
+      </p>
+      <ul v-if="recent.length" class="recent">
+        <li v-for="a in recent" :key="a.id" class="recent__item" @click="openArticle(a.url.actual)">
+          <span class="recent__title">{{ a.title }}</span>
+          <span class="recent__when">{{ formatRelativeTime(a.createdAt) }}</span>
+        </li>
+      </ul>
+    </footer>
+
+    <QToastHost />
   </div>
-
-  <!-- Category Modal -->
-  <CategoryModal
-    :is-open="showCategoryModal"
-    :existing-categories="categories"
-    @close="showCategoryModal = false"
-    @create="handleCategoryCreate"
-  />
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { useStorage } from '@/composables/useStorage'
+import { ref, computed, onMounted } from 'vue'
+import { useLibraryStore } from '@/stores/library'
+import { useSettingsStore } from '@/stores/settings'
+import { useUiStore } from '@/stores/ui'
 import { useTheme } from '@/composables/useTheme'
-import { storage } from '@/utils/storage'
-import { formatRelativeTime, normalizeUrl } from '@/utils/formatters'
+import { sendMessage } from '@/core/messaging/bus'
+import { normalizeUrl, formatRelativeTime } from '@/core/format'
 import { AIProvider, SummaryType } from '@/types'
-import CategoryModal from '@/components/CategoryModal.vue'
-import Header from './components/Header.vue'
-import CurrentPage from './components/CurrentPage.vue'
-import SaveSection from './components/SaveSection.vue'
-import QuickStats from './components/QuickStats.vue'
-import RecentItems from './components/RecentItems.vue'
-import QuickActions from './components/QuickActions.vue'
-import type { RecentItem } from './components/RecentItems.vue'
+import type { NewArticle } from '@/core/db'
+import { QButton, QTag, QRule, QToastHost, QIcon, QSwitch } from '@/design/primitives'
 
-const { articles, categories, loadArticles, loadCategories, saveArticle } = useStorage()
-const { toggleTheme } = useTheme()
+const library = useLibraryStore()
+const settings = useSettingsStore()
+const ui = useUiStore()
+const { theme, toggleTheme } = useTheme()
 
-// Current page state
-const currentPage = ref({
-  title: 'Loading...',
-  url: '',
-  domain: '',
-  favicon: '',
-  wordCount: 0,
-  readingTime: '',
-})
-
-// Form state
-const tagsInput = ref('')
-const selectedCategory = ref('')
-const closeTabAfterSave = ref(true)
+const page = ref({ title: 'Loading…', url: '', domain: '', favicon: '', readingTime: 'Estimating…', wordCount: 0 })
+const tags = ref<string[]>([])
+const tagInput = ref('')
+const tagFocused = ref(false)
+const categoryId = ref('')
 const generateSummary = ref(false)
-const createPodcast = ref(false)
+const generatePodcast = ref(false)
+const closeTabAfterSave = ref(true)
 const isSaving = ref(false)
-const isAlreadySaved = ref(false)
+const isSaved = ref(false)
+let activeTabId: number | undefined
 
-// Category modal
-const showCategoryModal = ref(false)
+const recent = computed(() =>
+  library.articles
+    .slice()
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 3),
+)
 
-// Stats
-const stats = ref({
-  totalSaved: 0,
-  unread: 0,
-  readToday: 0,
-})
-
-// Recent articles (last 5)
-const recentArticles = computed(() => {
-  return articles.value
-    .sort((a, b) => new Date(b.timestamps.dateAdded).getTime() - new Date(a.timestamps.dateAdded).getTime())
+const suggestions = computed(() => {
+  const q = tagInput.value.trim().toLowerCase()
+  return library.popularTags
+    .map((t) => t.name)
+    .filter((name) => !tags.value.includes(name) && (!q || name.toLowerCase().includes(q)))
     .slice(0, 5)
 })
 
-// Format recent articles for RecentItems component
-const recentArticlesFormatted = computed<RecentItem[]>(() => {
-  return recentArticles.value.map(article => ({
-    id: article.id,
-    title: article.title,
-    favicon: article.favicon,
-    category: getCategoryName(article.organization.category),
-    savedDate: formatRelativeTime(article.timestamps.dateAdded)
-  }))
-})
-
-// All unique tags for tag suggestions
-const allTags = computed(() => {
-  return Array.from(new Set(articles.value.flatMap(a => a.organization.tags)))
-})
-
-// Helper to get category name
-const getCategoryName = (categoryId: string): string => {
-  const category = categories.value.find(c => c.id === categoryId)
-  return category?.name || 'Uncategorized'
-}
-
-// Handle item click
-const handleItemClick = (item: RecentItem) => {
-  openArticle(item.id)
-}
-
-onMounted(async () => {
-  await initializeDefaultCategories()
-  await loadUserSettings()
-  await loadCurrentPageInfo()
-  await loadCategories()
-  await loadArticles()
-  await checkIfPageAlreadySaved()
-  updateStats()
-})
-
-const initializeDefaultCategories = async () => {
+function safeDomain(url?: string): string {
   try {
-    await storage.init()
-    const existingCategories = await storage.getAllCategories()
-    
-    // If no categories exist, create defaults
-    if (existingCategories.length === 0) {
-      const defaultCategories = [
-        { name: 'Work', color: '#3b82f6' },
-        { name: 'Personal', color: '#10b981' },
-        { name: 'Research', color: '#8b5cf6' },
-        { name: 'General', color: '#6b7280' },
-        { name: 'Articles', color: '#1daabf' },
-        { name: 'Development', color: '#06b6d4' },
-        { name: 'Videos', color: '#ec4899' },
-        { name: 'News', color: '#ef4444' },
-      ]
-      
-      for (const cat of defaultCategories) {
-        await storage.saveCategory(cat.name, cat.color)
-      }
-    }
-  } catch (error) {
-    console.error('Error initializing default categories:', error)
+    return new URL(url ?? '').hostname.replace(/^www\./, '')
+  } catch {
+    return ''
   }
 }
 
-const loadUserSettings = async () => {
-  try {
-    const result = await chrome.storage.sync.get(['settings'])
-    if (result.settings) {
-      // Update checkboxes based on user's saved settings
-      if (result.settings.autoSummary !== undefined) {
-        generateSummary.value = result.settings.autoSummary
-      }
-      if (result.settings.autoPodcast !== undefined) {
-        createPodcast.value = result.settings.autoPodcast
-      }
-    }
-  } catch (error) {
-    console.error('Error loading user settings:', error)
+function onTagKey(e: KeyboardEvent): void {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault()
+    addTag(tagInput.value)
+  } else if (e.key === 'Backspace' && !tagInput.value && tags.value.length) {
+    tags.value = tags.value.slice(0, -1)
   }
 }
 
-const loadCurrentPageInfo = async () => {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-    if (tab) {
-      currentPage.value = {
-        title: tab.title || 'Untitled',
-        url: tab.url || '',
-        domain: new URL(tab.url || '').hostname.replace('www.', ''),
-        favicon: tab.favIconUrl || '',
-        wordCount: 0,
-        readingTime: 'Estimating...', // Match original popup.html
-      }
-
-      // Don't await - let it update async in the background
-      estimateReadingTime(tab.id!)
-    }
-  } catch (error) {
-    console.error('Error loading current page:', error)
-  }
+function addTag(value: string): void {
+  const tag = value.trim().replace(/,$/, '').toLowerCase()
+  if (tag && !tags.value.includes(tag)) tags.value = [...tags.value, tag]
+  tagInput.value = ''
 }
 
-const estimateReadingTime = (tabId: number) => {
-  // Set timeout first
+function removeTag(tag: string): void {
+  tags.value = tags.value.filter((t) => t !== tag)
+}
+
+function checkSaved(): void {
+  if (!page.value.url) return
+  const clean = normalizeUrl(page.value.url)
+  isSaved.value = library.articles.some((a) => a.url.clean === clean)
+}
+
+function estimateReadingTime(tabId: number): void {
   const timeout = setTimeout(() => {
-    currentPage.value.readingTime = '~ 5 min read'
+    page.value.readingTime = '~ 5 min read'
   }, 2000)
-
-  // Send message to content script
   chrome.tabs.sendMessage(tabId, { action: 'getWordCount' }, (response) => {
     clearTimeout(timeout)
-    
-    if (chrome.runtime.lastError || !response || !response.wordCount) {
-      currentPage.value.readingTime = '~ 5 min read'
+    if (chrome.runtime.lastError || !response?.wordCount) {
+      page.value.readingTime = '~ 5 min read'
       return
     }
-
-    const wordCount = response.wordCount
-    currentPage.value.wordCount = wordCount
-    const minutes = Math.ceil(wordCount / 200)
-    currentPage.value.readingTime = `~ ${minutes} min read`
+    page.value.wordCount = response.wordCount
+    page.value.readingTime = `~ ${Math.max(1, Math.ceil(response.wordCount / 200))} min read`
   })
 }
 
-const checkIfPageAlreadySaved = async () => {
-  if (currentPage.value.url) {
-    const cleanUrl = normalizeUrl(currentPage.value.url)
-    const existingArticle = articles.value.find(a => a.cleanUrl === cleanUrl)
-    isAlreadySaved.value = !!existingArticle
+async function extractContent(tabId: number): Promise<string> {
+  let csText = ''
+  // 1) Ask the content script (best extraction — JSON-LD, semantic HTML, …).
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, { action: 'extractContent' })
+    const c = response?.content
+    csText = (c && typeof c === 'object' ? c.content : typeof c === 'string' ? c : '') || ''
+  } catch {
+    // content script not present on this tab — fall through to injection
+  }
+  if (csText.trim().length >= 200) return csText
+
+  // 2) Inject a one-off extractor and keep whichever yields more text. Works
+  //    even when the content script never loaded, and rescues pages where the
+  //    content script only found a short snippet.
+  try {
+    const [injected] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const root = document.querySelector('article') || document.querySelector('main') || document.body
+        if (!root) return ''
+        const blocks = Array.from(root.querySelectorAll('p, h1, h2, h3, h4, li, blockquote, pre'))
+          .map((node) => (node.textContent || '').trim())
+          .filter((t) => t.length > 0)
+        return blocks.length ? blocks.join('\n\n') : (root as HTMLElement).innerText || ''
+      },
+    })
+    const injText = (injected?.result as string) || ''
+    return injText.length > csText.length ? injText : csText
+  } catch {
+    return csText
   }
 }
 
-const saveCurrentArticle = async () => {
-  if (isSaving.value || isAlreadySaved.value) return
-
+async function save(): Promise<void> {
+  if (isSaving.value || isSaved.value || !page.value.url) return
+  isSaving.value = true
   try {
-    isSaving.value = true
-
-    const tags = tagsInput.value
-      .split(',')
-      .map(t => t.trim())
-      .filter(t => t.length > 0)
-
-    // Extract article content from the active tab
-    let articleContent = ''
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-      if (tab && tab.id) {
-        try {
-          // Content script is already injected via manifest, just send message
-          const response = await chrome.tabs.sendMessage(tab.id, { action: 'extractContent' })
-          
-          // The response.content is an ExtractedContent object
-          if (response && response.content) {
-            // If it's an object with a content property, extract the content string
-            if (typeof response.content === 'object' && response.content.content) {
-              articleContent = response.content.content
-            } else if (typeof response.content === 'string') {
-              articleContent = response.content
-            }
-          } else {
-            console.warn('No content in response:', response)
-          }
-        } catch (msgError) {
-          console.error('Could not extract content via content script:', msgError)
-          // Try basic extraction as fallback
-          try {
-            const [result] = await chrome.scripting.executeScript({
-              target: { tabId: tab.id },
-              func: () => {
-                const article = document.querySelector('article')
-                const main = document.querySelector('main')
-                const content = article || main || document.body
-                return content?.innerText || ''
-              }
-            })
-            if (result?.result) {
-              articleContent = result.result
-            }
-          } catch (fallbackError) {
-            console.warn('Fallback content extraction failed:', fallbackError)
-          }
-        }
-      }
-    } catch (contentError) {
-      console.warn('Failed to extract article content:', contentError)
-      // Continue saving even if content extraction fails
+    const text = activeTabId ? await extractContent(activeTabId) : ''
+    const input: NewArticle = {
+      url: { actual: page.value.url, clean: normalizeUrl(page.value.url) },
+      title: page.value.title,
+      favicon: page.value.favicon || undefined,
+      content: { text, format: 'text', wordCount: page.value.wordCount },
+      categoryId: categoryId.value || undefined,
+      tags: tags.value,
     }
 
-    const articleData = {
-      actualUrl: currentPage.value.url,
-      cleanUrl: normalizeUrl(currentPage.value.url),
-      title: currentPage.value.title,
-      favicon: currentPage.value.favicon,
-      content: articleContent, // Add extracted content
-      metadata: {
-        wordCount: currentPage.value.wordCount,
-        readingTime: currentPage.value.readingTime,
-      },
-      organization: {
-        category: selectedCategory.value || 'Uncategorized',
-        tags,
-        isPinned: false,
-        isArchived: false,
-        isRead: false,
-      },
-    }
+    const article = await library.addArticle(input)
+    isSaved.value = true
 
-    await saveArticle(articleData)
-    isAlreadySaved.value = true
-    updateStats()
-
-    // Get the saved article's ID for AI generation
-    const savedArticle = await storage.getArticleByCleanUrl(normalizeUrl(currentPage.value.url))
-    
-    // Trigger AI summary generation if enabled
-    if (generateSummary.value && savedArticle) {
-      chrome.runtime.sendMessage({
+    if (generateSummary.value) {
+      sendMessage({
         action: 'generateSummary',
-        articleId: savedArticle.id,
+        articleId: article.id,
         type: SummaryType.CONCISE,
-        provider: AIProvider.OPENAI
-      }).catch(err => {
-        console.warn('Failed to trigger summary generation:', err)
-      })
+        provider: settings.settings?.summaryProvider ?? AIProvider.GEMINI,
+      }).catch(() => {})
     }
-
-    // Trigger podcast generation if enabled
-    if (createPodcast.value && savedArticle) {
-      chrome.runtime.sendMessage({
-        action: 'generatePodcast',
-        articleId: savedArticle.id
-      }).catch(err => {
-        console.warn('Failed to trigger podcast generation:', err)
-      })
+    if (generatePodcast.value) {
+      sendMessage({ action: 'generatePodcast', articleId: article.id }).catch(() => {})
     }
-
-    // Send message to background script to show Chrome notification
-    chrome.runtime.sendMessage({
-      action: 'articleSaved',
-      article: articleData
-    })
-
-    // Show success notification
-    showSuccessMessage()
-
-    // Close tab if option is enabled
-    if (closeTabAfterSave.value) {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-      if (tab && tab.id) {
-        await chrome.tabs.remove(tab.id)
-      }
+    if (settings.settings?.autoGroup) {
+      sendMessage({ action: 'groupArticle', articleId: article.id }).catch(() => {})
     }
-  } catch (error) {
-    console.error('Error saving article:', error)
-    showErrorMessage()
+    sendMessage({ action: 'articleSaved', article }).catch(() => {})
+
+    ui.success('Saved to your library')
+
+    if (closeTabAfterSave.value && activeTabId !== undefined) {
+      setTimeout(() => activeTabId !== undefined && chrome.tabs.remove(activeTabId), 350)
+    }
+  } catch (err) {
+    ui.error(err instanceof Error ? err.message : 'Failed to save')
   } finally {
     isSaving.value = false
   }
 }
 
-const updateStats = () => {
-  stats.value.totalSaved = articles.value.length
-  stats.value.unread = articles.value.filter(a => !a.organization.isRead && !a.organization.isArchived).length
-  
-  const today = new Date().toDateString()
-  stats.value.readToday = articles.value.filter(a => {
-    return a.organization.isRead && 
-           a.timestamps.dateRead && 
-           new Date(a.timestamps.dateRead).toDateString() === today
-  }).length
+function openArticle(url: string): void {
+  chrome.tabs.create({ url })
 }
 
-const openArticle = async (articleId: string) => {
-  const article = articles.value.find(a => a.id === articleId)
-  if (article) {
-    await chrome.tabs.create({ url: article.actualUrl })
-  }
+function openLibrary(): void {
+  chrome.tabs.create({ url: chrome.runtime.getURL('src/manager/index.html') })
 }
 
-const openRandomArticle = async () => {
-  const unreadArticles = articles.value.filter(a => !a.organization.isRead && !a.organization.isArchived)
-  if (unreadArticles.length > 0) {
-    const randomArticle = unreadArticles[Math.floor(Math.random() * unreadArticles.length)]
-    await chrome.tabs.create({ url: randomArticle.actualUrl })
-  }
-}
+onMounted(async () => {
+  await settings.load()
+  await library.load()
+  generateSummary.value = settings.settings?.autoSummary ?? false
+  generatePodcast.value = settings.settings?.autoPodcast ?? false
 
-const openManager = async () => {
-  const managerUrl = chrome.runtime.getURL('src/manager/index.html')
-  
-  // Check if a manager tab is already open
-  const tabs = await chrome.tabs.query({ url: managerUrl })
-  
-  if (tabs.length > 0) {
-    // Manager tab exists - focus it
-    const managerTab = tabs[0]
-    await chrome.tabs.update(managerTab.id!, { active: true })
-    
-    // Also focus the window
-    if (managerTab.windowId) {
-      await chrome.windows.update(managerTab.windowId, { focused: true })
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (tab) {
+    activeTabId = tab.id
+    page.value = {
+      title: tab.title || 'Untitled',
+      url: tab.url || '',
+      domain: safeDomain(tab.url),
+      favicon: tab.favIconUrl || '',
+      readingTime: 'Estimating…',
+      wordCount: 0,
     }
-  } else {
-    // No manager tab - create a new one
-    await chrome.tabs.create({ url: managerUrl })
+    checkSaved()
+    if (tab.id !== undefined) estimateReadingTime(tab.id)
   }
-}
-
-const handleCategoryCreate = async (data: { name: string; color: string }) => {
-  try {
-    // Save to IndexedDB via background script
-    await chrome.runtime.sendMessage({
-      action: 'saveCategory',
-      data
-    })
-    
-    // Reload categories
-    await loadCategories()
-    
-    // Find the newly created category and select it
-    const newCategory = categories.value.find(c => c.name === data.name)
-    if (newCategory) {
-      selectedCategory.value = newCategory.id
-    }
-
-    showCategoryModal.value = false
-  } catch (error) {
-    console.error('Failed to create category:', error)
-  }
-}
-
-const showSuccessMessage = () => {
-  // Success is already shown via button state ("Already Saved")
-}
-
-const showErrorMessage = () => {
-  // Error handling - could show inline error in the future
-  console.error('Failed to save article')
-}
+})
 </script>
 
 <style scoped>
-.container {
-  padding: 20px;
+.capture {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.wordmark__mark {
+  color: var(--accent);
+}
+.wordmark__name {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 1.5rem;
+  letter-spacing: var(--tracking-tight);
+}
+.masthead__actions {
+  display: flex;
+  gap: 0.25rem;
+}
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--rule);
+  background: var(--paper-raised);
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--ink-muted);
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.icon-btn:hover {
+  border-color: var(--rule-strong);
+  color: var(--accent);
+}
+
+.page-card {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--paper-raised);
+  padding: var(--space-4);
+}
+.page-card__top {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.page-card__favicon {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  flex: none;
+  margin-top: 2px;
+}
+.page-card__title {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: 1.15rem;
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-tight);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.page-card__meta {
+  margin-top: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.field__label {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.tags-input {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  padding: 0.5rem;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.tags-input.is-focused {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+.tags-input__field {
+  flex: 1;
+  min-width: 90px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-serif);
+  font-size: var(--text-base);
+  color: var(--ink);
+}
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.suggestion {
+  border: 1px dashed var(--rule-strong);
+  background: none;
+  border-radius: var(--radius-full);
+  padding: 0.15rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.suggestion:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.select {
+  position: relative;
+}
+.select select {
+  width: 100%;
+  appearance: none;
+  font-family: var(--font-serif);
+  font-size: var(--text-base);
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  padding: 0.55rem 2rem 0.55rem 0.7rem;
+  cursor: pointer;
+}
+.select::after {
+  content: '▾';
+  position: absolute;
+  right: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+.toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.toggle__text {
+  font-size: var(--text-base);
+  color: var(--ink);
+}
+
+.saved {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: var(--space-4) 0;
+  text-align: center;
+}
+.saved__mark {
+  color: var(--accent);
+}
+.saved__text {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.footer__stats {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+.footer__stats strong {
+  color: var(--ink);
+}
+.recent {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.recent__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--rule);
+  cursor: pointer;
+}
+.recent__item:hover .recent__title {
+  color: var(--accent);
+}
+.recent__title {
+  font-size: var(--text-sm);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recent__when {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+  flex: none;
+}
+.dot {
+  color: var(--ink-faint);
 }
 </style>
 
 <style>
-/* Popup page-specific global styles */
 body {
-  width: 360px;
-  min-height: 480px;
-  background: var(--bg-primary);
-}
-
-@media (max-width: 400px) {
-  body {
-    width: 320px;
-  }
+  width: 380px;
+  min-height: 460px;
 }
 </style>

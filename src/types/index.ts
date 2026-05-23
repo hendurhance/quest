@@ -176,7 +176,8 @@ export interface Settings {
   defaultCategory: string
   autoSummary: boolean
   autoPodcast: boolean
-  
+  autoGroup: boolean
+
   // AI Summary Settings
   summaryProvider: SummaryProvider
   openaiModel: string

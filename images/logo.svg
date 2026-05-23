@@ -1,0 +1,8 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Quest mark: a bookmark (save + read) on the brand deep green. -->
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#15604F"/>
+  <path
+    d="M40 39c0-2.21 1.79-4 4-4h40c2.21 0 4 1.79 4 4v58L64 84 40 97z"
+    fill="#FAF6EE"
+  />
+</svg>

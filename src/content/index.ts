@@ -1,4 +1,5 @@
-import { formatTime } from "@/utils/formatters"
+import { sendMessage } from '@/core/messaging/bus'
+import { markdownToHtml } from '@/core/markdown'
 
 interface ExtractedContent {
   title: string
@@ -8,201 +9,20 @@ interface ExtractedContent {
   wordCount: number
 }
 
-// ============================================================================
-// UI Utilities 
-// ============================================================================
-
-const ICONS = {
-  play: '<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>',
-  pause: '<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>',
-  layers: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2L2 7L12 12L22 7L12 2Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 17L12 22L22 17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12L12 17L22 12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  clock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="2"/><path d="M12 6V12L16 14" stroke-width="2" stroke-linecap="round"/></svg>',
-  close: '&times;'
-}
-
-interface OverlayConfig {
-  position: 'top-right' | 'bottom-right' | 'top-left' | 'bottom-left'
-  width: string
-  headerGradient: string
-  title: string
-  content: string
-  styles?: string
-}
-
-function removeExistingOverlay(id: string): void {
-  const existing = document.getElementById(id)
-  if (existing) existing.remove()
-}
-
-function createOverlayContainer(id: string, config: OverlayConfig): HTMLDivElement {
-  const container = document.createElement('div')
-  container.id = id
-  
-  const positionStyles = getPositionStyles(config.position)
-  
-  container.innerHTML = `
-    <style>
-      #${id} {
-        position: fixed;
-        ${positionStyles}
-        width: ${config.width};
-        max-height: 80vh;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-        z-index: 999999;
-        overflow: hidden;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        animation: slideIn 0.3s ease-out;
-      }
-      #${id} .header {
-        background: ${config.headerGradient};
-        color: white;
-        padding: 16px 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      #${id} .header h3 {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 600;
-      }
-      #${id} .close-btn {
-        background: none;
-        border: none;
-        color: white;
-        cursor: pointer;
-        font-size: 20px;
-        padding: 0;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
-        transition: background 0.2s;
-      }
-      #${id} .close-btn:hover {
-        background: rgba(255, 255, 255, 0.2);
-      }
-      #${id} .content {
-        padding: 20px;
-        max-height: calc(80vh - 120px);
-        overflow-y: auto;
-        line-height: 1.6;
-        color: #1f2937;
-      }
-      ${config.styles || ''}
-    </style>
-    <div class="header">
-      <h3>${config.title}</h3>
-      <button class="close-btn">${ICONS.close}</button>
-    </div>
-    <div class="content">
-      ${config.content}
-    </div>
-  `
-  
-  return container
-}
-
-function getPositionStyles(position: OverlayConfig['position']): string {
-  const positions = {
-    'top-right': 'top: 20px; right: 20px;',
-    'bottom-right': 'bottom: 20px; right: 20px;',
-    'top-left': 'top: 20px; left: 20px;',
-    'bottom-left': 'bottom: 20px; left: 20px;'
-  }
-  return positions[position]
-}
-
-function createMetadataItem(icon: string, text: string): string {
-  return `<span>${icon} ${text}</span>`
-}
-
-function attachCloseHandler(container: HTMLElement, beforeClose?: () => void): void {
-  const closeBtn = container.querySelector('.close-btn')
-  closeBtn?.addEventListener('click', () => {
-    beforeClose?.()
-    container.remove()
-  })
-}
-
-function setupAudioPlayer(container: HTMLElement, _podcastData: any): void {
-  const audio = container.querySelector('#podcast-audio') as HTMLAudioElement
-  const playBtn = container.querySelector('.play-btn') as HTMLButtonElement
-  const currentTimeEl = container.querySelector('.current-time') as HTMLElement
-  const totalTimeEl = container.querySelector('.total-time') as HTMLElement
-  const progressFill = container.querySelector('.progress-fill') as HTMLElement
-  const progressBar = container.querySelector('.progress-bar') as HTMLElement
-
-  let isPlaying = false
-
-  // Update total time when metadata loads
-  audio.addEventListener('loadedmetadata', () => {
-    totalTimeEl.textContent = formatTime(audio.duration)
-  })
-
-  // Update progress
-  audio.addEventListener('timeupdate', () => {
-    currentTimeEl.textContent = formatTime(audio.currentTime)
-    progressFill.style.width = `${(audio.currentTime / audio.duration) * 100}%`
-  })
-
-  // Play/pause toggle
-  playBtn.addEventListener('click', () => {
-    if (isPlaying) {
-      audio.pause()
-      playBtn.innerHTML = ICONS.play
-    } else {
-      audio.play()
-      playBtn.innerHTML = ICONS.pause
-    }
-    isPlaying = !isPlaying
-  })
-
-  // Seek functionality
-  progressBar.addEventListener('click', (e) => {
-    const rect = progressBar.getBoundingClientRect()
-    const percent = (e.clientX - rect.left) / rect.width
-    audio.currentTime = percent * audio.duration
-  })
-}
-
-
-// ============================================================================
-// Message Listener
-// ============================================================================
-
-// Listen for messages from popup and background
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action === 'ping') {
     sendResponse({ ready: true })
     return true
   }
-
   if (message.action === 'getWordCount') {
-    const wordCount = calculateWordCount()
-    sendResponse({ wordCount })
+    sendResponse({ wordCount: calculateWordCount() })
+    return true
   }
-
   if (message.action === 'extractContent') {
-    const content = ContentExtractor.extractContent()
-    sendResponse({ content })
+    sendResponse({ content: ContentExtractor.extractContent() })
+    return true
   }
-
-  if (message.action === 'injectSummary') {
-    injectSummaryIntoPage(message.summary, message.metadata)
-    sendResponse({ success: true })
-  }
-
-  if (message.action === 'injectPodcast') {
-    injectPodcastIntoPage(message.podcastData)
-    sendResponse({ success: true })
-  }
-
-  return true
+  return false
 })
 
 function calculateWordCount(): number {
@@ -219,76 +39,45 @@ function calculateWordCount(): number {
   ]
 
   let mainContent: HTMLElement | null = null
-
-  // Try to find main content area
   for (const selector of contentSelectors) {
     mainContent = document.querySelector(selector)
     if (mainContent) break
   }
+  if (!mainContent) mainContent = document.body
 
-  // Fallback to body if no main content found
-  if (!mainContent) {
-    mainContent = document.body
-  }
-
-  // Remove unwanted elements
   const clone = mainContent.cloneNode(true) as HTMLElement
-  const unwantedSelectors = [
-    'script',
-    'style',
-    'nav',
-    'header',
-    'footer',
-    '.ad',
-    '.advertisement',
-    '.sidebar',
-    '.comments',
-    '.share',
-    '.social',
-    '.navigation',
-    '.menu',
-  ]
+  const unwanted = ['script', 'style', 'nav', 'header', 'footer', '.ad', '.advertisement', '.sidebar', '.comments', '.share', '.social', '.navigation', '.menu']
+  unwanted.forEach((selector) => clone.querySelectorAll(selector).forEach((el) => el.remove()))
 
-  unwantedSelectors.forEach((selector) => {
-    clone.querySelectorAll(selector).forEach((el) => el.remove())
-  })
-
-  // Get text content and count words
   const text = clone.textContent || clone.innerText || ''
-  const words = text.trim().split(/\s+/).filter((word) => word.length > 0)
-
-  return words.length
+  return text.trim().split(/\s+/).filter((w) => w.length > 0).length
 }
 
-// Enhanced content extraction for article content
 const ContentExtractor = {
   extractContent(): ExtractedContent {
-    // Try multiple extraction methods in order of preference
-    const jsonLdData = this.extractFromJsonLd()
-    if (jsonLdData) return jsonLdData
+    const MIN_BODY = 200
 
-    const ogData = this.extractFromOpenGraph()
-    if (ogData) return ogData
+    // Prefer a real article body — pick the richest of the body-extracting
+    // methods, but only if it's substantial. (A JSON-LD block with no
+    // articleBody, or an og:description, must NOT short-circuit the rest.)
+    const rich = [this.extractFromJsonLd(), this.extractFromSemanticHTML(), this.extractFromCommonSelectors()]
+      .filter((c): c is ExtractedContent => !!c && (c.content?.length ?? 0) >= MIN_BODY)
+      .sort((a, b) => b.content.length - a.content.length)[0]
+    if (rich) return rich
 
-    const metaData = this.extractFromMetaTags()
-    if (metaData) return metaData
+    // Otherwise score the DOM for the most paragraph-dense region.
+    const heuristic = this.extractFromHeuristics()
+    if (heuristic.content.length >= MIN_BODY) return heuristic
 
-    const semanticData = this.extractFromSemanticHTML()
-    if (semanticData) return semanticData
-
-    const selectorData = this.extractFromCommonSelectors()
-    if (selectorData) return selectorData
-
-    // Fallback to heuristic extraction
-    return this.extractFromHeuristics()
+    // Last resort: any title/description metadata we can salvage.
+    return this.extractFromJsonLd() || this.extractFromOpenGraph() || this.extractFromMetaTags() || heuristic
   },
 
   extractFromJsonLd(): ExtractedContent | null {
     const scripts = document.querySelectorAll('script[type="application/ld+json"]')
     for (const script of scripts) {
       try {
-        const data = JSON.parse(script.textContent || '')
-        const article = this.findArticleInJsonLd(data)
+        const article = this.findArticleInJsonLd(JSON.parse(script.textContent || ''))
         if (article) {
           return {
             title: article.headline || article.name || document.title,
@@ -298,8 +87,8 @@ const ContentExtractor = {
             wordCount: article.wordCount || 0,
           }
         }
-      } catch (e) {
-        // Skip invalid JSON
+      } catch {
+        // skip invalid JSON
       }
     }
     return null
@@ -312,46 +101,25 @@ const ContentExtractor = {
         if (result) return result
       }
     }
-
     if (data['@type'] === 'Article' || data['@type'] === 'NewsArticle' || data['@type'] === 'BlogPosting') {
       return data
     }
-
-    if (data['@graph']) {
-      return this.findArticleInJsonLd(data['@graph'])
-    }
-
+    if (data['@graph']) return this.findArticleInJsonLd(data['@graph'])
     return null
   },
 
   extractFromOpenGraph(): ExtractedContent | null {
     const title = document.querySelector('meta[property="og:title"]')?.getAttribute('content')
+    if (!title) return null
     const description = document.querySelector('meta[property="og:description"]')?.getAttribute('content')
-
-    if (title) {
-      return {
-        title,
-        content: description || '',
-        wordCount: 0,
-      }
-    }
-
-    return null
+    return { title, content: description || '', wordCount: 0 }
   },
 
   extractFromMetaTags(): ExtractedContent | null {
     const title = document.querySelector('meta[name="title"]')?.getAttribute('content')
+    if (!title) return null
     const description = document.querySelector('meta[name="description"]')?.getAttribute('content')
-
-    if (title) {
-      return {
-        title,
-        content: description || '',
-        wordCount: 0,
-      }
-    }
-
-    return null
+    return { title, content: description || '', wordCount: 0 }
   },
 
   extractFromSemanticHTML(): ExtractedContent | null {
@@ -359,328 +127,197 @@ const ContentExtractor = {
     if (!article) return null
 
     const title = article.querySelector('h1')?.textContent || document.title
-    
-    // Extract paragraphs and headings for better content
     const contentElements = article.querySelectorAll('p, h2, h3, h4, h5, h6, pre, blockquote, li')
     const content = Array.from(contentElements)
       .map((el) => el.textContent?.trim())
-      .filter(text => text && text.length > 0)
+      .filter((text) => text && text.length > 0)
       .join('\n\n')
 
-    // If no meaningful content, try just paragraphs
-    if (content.length < 100) {
-      const paragraphs = article.querySelectorAll('p')
-      const paragraphContent = Array.from(paragraphs)
-        .map((p) => p.textContent?.trim())
-        .filter(text => text && text.length > 0)
-        .join('\n\n')
-      
-      if (paragraphContent.length < 100) {
-        return null // Not enough content
-      }
-      
-      return {
-        title,
-        content: paragraphContent,
-        wordCount: paragraphContent.split(/\s+/).length,
-      }
-    }
+    if (content.length < 100) return null
 
-    const author = article.querySelector('[rel="author"]')?.textContent ||
+    const author =
+      article.querySelector('[rel="author"]')?.textContent ||
       article.querySelector('.author')?.textContent ||
-      article.querySelector('[data-testid="authorName"]')?.textContent || // Medium author
+      article.querySelector('[data-testid="authorName"]')?.textContent ||
       undefined
-
-    const publishDate = article.querySelector('time')?.getAttribute('datetime') ||
+    const publishDate =
+      article.querySelector('time')?.getAttribute('datetime') ||
       article.querySelector('[itemprop="datePublished"]')?.getAttribute('content') ||
       undefined
 
-    return {
-      title,
-      content,
-      author,
-      publishDate,
-      wordCount: content.split(/\s+/).length,
-    }
+    return { title, content, author, publishDate, wordCount: content.split(/\s+/).length }
   },
 
   extractFromCommonSelectors(): ExtractedContent | null {
-    const contentSelectors = [
-      // Medium.com specific selectors
+    const selectors = [
       { title: 'h1', content: 'article' },
       { title: '[data-testid="storyTitle"]', content: 'article' },
       { title: '.pw-post-title', content: '.pw-post-body' },
-      // General selectors
-      { title: 'h1', content: 'article' },
       { title: '.post-title', content: '.post-content' },
       { title: '.entry-title', content: '.entry-content' },
       { title: '.article-title', content: '.article-content' },
       { title: '.story-headline', content: '.story-body' },
     ]
 
-    for (const selector of contentSelectors) {
+    for (const selector of selectors) {
       const titleEl = document.querySelector(selector.title)
       const contentEl = document.querySelector(selector.content)
-
       if (titleEl && contentEl) {
         const title = titleEl.textContent || document.title
-        
-        // For Medium and similar sites, extract only paragraph text
         const paragraphs = contentEl.querySelectorAll('p, h1, h2, h3, h4, h5, h6')
         const content = Array.from(paragraphs)
           .map((p) => p.textContent?.trim())
-          .filter(text => text && text.length > 0)
+          .filter((text) => text && text.length > 0)
           .join('\n\n')
-
-        if (content.length > 100) { // Ensure we got meaningful content
-          return {
-            title,
-            content,
-            wordCount: content.split(/\s+/).length,
-          }
+        if (content.length > 100) {
+          return { title, content, wordCount: content.split(/\s+/).length }
         }
       }
     }
-
     return null
   },
 
   extractFromHeuristics(): ExtractedContent {
-    const title = document.title
-
-    // Find the element with the most paragraph content
-    const allElements = document.querySelectorAll('div, article, section, main')
     let bestElement: Element | null = null
     let maxScore = 0
-
-    for (const element of allElements) {
+    for (const element of document.querySelectorAll('div, article, section, main')) {
       const score = this.scoreElement(element as HTMLElement)
       if (score > maxScore) {
         maxScore = score
         bestElement = element
       }
     }
-
     const content = bestElement?.textContent || document.body.textContent || ''
-
-    return {
-      title,
-      content,
-      wordCount: content.split(/\s+/).length,
-    }
+    return { title: document.title, content, wordCount: content.split(/\s+/).length }
   },
 
   scoreElement(element: HTMLElement): number {
-    let score = 0
-
-    // Count paragraphs
-    const paragraphs = element.querySelectorAll('p')
-    score += paragraphs.length * 25
-
-    // Count text length
-    const textLength = (element.textContent || '').length
-    score += Math.min(textLength / 100, 50)
-
-    // Bonus for article-like classes
+    let score = element.querySelectorAll('p').length * 25
+    score += Math.min((element.textContent || '').length / 100, 50)
     const className = element.className.toLowerCase()
-    if (className.includes('article') || className.includes('content') || className.includes('post')) {
-      score += 25
-    }
-
-    // Penalty for nav/sidebar classes
-    if (className.includes('nav') || className.includes('sidebar') || className.includes('menu')) {
-      score -= 50
-    }
-
-    // Check if element has significant content
-    if (!this.hasSignificantContent(element)) {
-      score -= 25
-    }
-
+    if (className.includes('article') || className.includes('content') || className.includes('post')) score += 25
+    if (className.includes('nav') || className.includes('sidebar') || className.includes('menu')) score -= 50
+    const text = element.textContent || ''
+    if (!(text.length > 100 && text.split(/\s+/).length > 20)) score -= 25
     return score
   },
-
-  hasSignificantContent(element: HTMLElement): boolean {
-    const text = element.textContent || ''
-    return text.length > 100 && text.split(/\s+/).length > 20
-  },
 }
 
-// Content injection functions
-function injectSummaryIntoPage(summary: string, metadata: any) {
-  removeExistingOverlay('quest-summary')
+// Revisiting a saved page re-renders your highlights and surfaces the summary.
+// Highlights are re-anchored by text match (the stored block offsets describe
+// our extracted copy, not this live DOM).
 
-  const summaryContainer = createOverlayContainer('quest-summary', {
-    position: 'top-right',
-    width: '400px',
-    headerGradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-    title: 'AI Summary',
-    content: `
-      <div class="metadata">
-        ${createMetadataItem(ICONS.layers, metadata.provider)}
-        ${createMetadataItem(ICONS.clock, metadata.date)}
-      </div>
-      <div class="summary-text">
-        ${markdownToHtml(summary)}
-      </div>
-    `,
-    styles: `
-      .metadata {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 16px;
-        font-size: 12px;
-        color: #6b7280;
-      }
-      .metadata span {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
-      .summary-text {
-        font-size: 14px;
-      }
-      .summary-text p {
-        margin-bottom: 12px;
-      }
-    `
-  })
+void initAnnotations()
 
-  document.body.appendChild(summaryContainer)
-  attachCloseHandler(summaryContainer)
-}
-
-function injectPodcastIntoPage(podcastData: any) {
-  removeExistingOverlay('quest-podcast')
-
-  const playerContainer = createOverlayContainer('quest-podcast', {
-    position: 'bottom-right',
-    width: '400px',
-    headerGradient: 'linear-gradient(135deg, #1FB6CC 0%, #0B3C49 100%)',
-    title: 'Podcast Player',
-    content: `
-      <div class="controls">
-        <button class="play-btn">${ICONS.play}</button>
-        <div class="time-display">
-          <span class="current-time">0:00</span> / <span class="total-time">0:00</span>
-        </div>
-      </div>
-      <div class="progress-bar">
-        <div class="progress-fill" style="width: 0%"></div>
-      </div>
-      <audio id="podcast-audio" src="${podcastData.audioUrl}" preload="metadata"></audio>
-    `,
-    styles: `
-      .controls {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        margin-bottom: 16px;
-      }
-      .play-btn {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background: #1daabf;
-        border: none;
-        color: white;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-      }
-      .play-btn:hover {
-        background: #084158;
-        transform: scale(1.05);
-      }
-      .time-display {
-        flex: 1;
-        text-align: center;
-        font-size: 14px;
-        color: #6b7280;
-        font-family: monospace;
-      }
-      .progress-bar {
-        width: 100%;
-        height: 6px;
-        background: #e5e7eb;
-        border-radius: 3px;
-        overflow: hidden;
-        cursor: pointer;
-      }
-      .progress-fill {
-        height: 100%;
-        background: #1daabf;
-        transition: width 0.1s;
-      }
-    `
-  })
-
-  document.body.appendChild(playerContainer)
-  setupAudioPlayer(playerContainer, podcastData)
-  attachCloseHandler(playerContainer, () => {
-    const audio = playerContainer.querySelector('#podcast-audio') as HTMLAudioElement
-    audio?.pause()
-  })
-}
-
-// ============================================================================
-// Markdown to HTML Converter
-// ============================================================================
-function markdownToHtml(markdown: string): string {
-  let html = markdown
-
-  // Headers
-  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>')
-  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>')
-  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>')
-
-  // Bold
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-  html = html.replace(/\_\_(.*?)\_\_/g, '<strong>$1</strong>')
-
-  // Italic
-  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>')
-  html = html.replace(/\_(.*?)\_/g, '<em>$1</em>')
-
-  // Links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-
-  // Lists
-  html = html.replace(/^\* (.*$)/gim, '<li>$1</li>')
-  html = html.replace(/^\- (.*$)/gim, '<li>$1</li>')
-  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-
-  // Paragraphs
-  html = html.split('\n\n').map(para => {
-    if (!para.startsWith('<') && para.trim().length > 0) {
-      return `<p>${para}</p>`
+async function initAnnotations(): Promise<void> {
+  if (!/^https?:/.test(location.href)) return
+  try {
+    const data = await sendMessage({ action: 'getPageAnnotations', url: location.href })
+    // Diagnostic (verbose level — hidden unless you enable it). Tells you whether
+    // the content script ran and whether this URL matched a saved article.
+    console.debug('[Quest] saved-page check', {
+      url: location.href,
+      inLibrary: !!data?.articleId,
+      highlights: data?.highlights?.length ?? 0,
+      summary: !!data?.summary,
+    })
+    if (!data || !data.articleId) return // page isn't in the library
+    injectAnnotationStyles()
+    let rendered = 0
+    for (const h of data.highlights) {
+      if (renderHighlight(h.text)) rendered++
     }
-    return para
-  }).join('')
-
-  return html
+    // Some pages finish rendering after document_idle — retry once if nothing
+    // anchored yet so highlights still land on slow/SPA pages.
+    if (rendered === 0 && data.highlights.length > 0) {
+      setTimeout(() => {
+        for (const h of data.highlights) renderHighlight(h.text)
+      }, 1500)
+    }
+    mountPanel(data.highlights.length, data.summary)
+  } catch {
+    // background unavailable / restricted page — ignore
+  }
 }
 
-// ============================================================================
-// Global Animations
-// ============================================================================
+function renderHighlight(text: string): boolean {
+  const needle = text.trim()
+  if (needle.length < 4) return false
 
-if (!document.querySelector('#quest-animations')) {
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement
+      if (!parent) return NodeFilter.FILTER_REJECT
+      const tag = parent.tagName
+      if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT' || tag === 'MARK') return NodeFilter.FILTER_REJECT
+      if (parent.closest('#quest-panel')) return NodeFilter.FILTER_REJECT
+      return NodeFilter.FILTER_ACCEPT
+    },
+  })
+
+  let node: Node | null
+  while ((node = walker.nextNode())) {
+    const value = node.nodeValue ?? ''
+    const idx = value.indexOf(needle)
+    if (idx === -1) continue
+    const range = document.createRange()
+    range.setStart(node, idx)
+    range.setEnd(node, idx + needle.length)
+    const mark = document.createElement('mark')
+    mark.className = 'quest-hl'
+    try {
+      range.surroundContents(mark)
+      return true
+    } catch {
+      return false // highlight spans element boundaries — skip for now
+    }
+  }
+  return false
+}
+
+function mountPanel(count: number, summary: string | null): void {
+  if (document.getElementById('quest-panel')) return
+  const panel = document.createElement('div')
+  panel.id = 'quest-panel'
+  const label =
+    count > 0
+      ? `${count} highlight${count === 1 ? '' : 's'}${summary ? ' · summary' : ''}`
+      : summary
+        ? 'Summary'
+        : 'Saved to Quest'
+  const summaryHtml = summary ? markdownToHtml(summary) : ''
+  panel.innerHTML = `
+    <button id="quest-pill" type="button">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 3a2 2 0 0 0-2 2v16l8-5 8 5V5a2 2 0 0 0-2-2z"/></svg>
+      <span>${label}</span>
+    </button>
+    ${summary ? `<div id="quest-body"><div id="quest-summary">${summaryHtml}</div></div>` : ''}
+  `
+  document.body.appendChild(panel)
+  if (summary) {
+    panel.querySelector('#quest-pill')?.addEventListener('click', () => panel.classList.toggle('is-open'))
+  }
+}
+
+function injectAnnotationStyles(): void {
+  if (document.getElementById('quest-styles')) return
   const style = document.createElement('style')
-  style.id = 'quest-animations'
+  style.id = 'quest-styles'
   style.textContent = `
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
+    mark.quest-hl { background: rgba(240,210,123,0.5); color: inherit; border-radius: 2px; padding: 0 1px; }
+    #quest-panel { position: fixed; bottom: 18px; right: 18px; z-index: 2147483646; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    #quest-pill { display: inline-flex; align-items: center; gap: 7px; background: #15604f; color: #faf6ee; border: 0; border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.18); }
+    #quest-body { display: none; margin-top: 8px; width: 340px; max-height: 50vh; overflow-y: auto; background: #fffdf8; color: #211e1a; border: 1px solid #e3dccd; border-radius: 12px; padding: 16px 18px; box-shadow: 0 16px 48px -12px rgba(0,0,0,0.28); }
+    #quest-panel.is-open #quest-body { display: block; }
+    #quest-summary { font-size: 14px; line-height: 1.6; }
+    #quest-summary p { margin: 0 0 10px; }
+    #quest-summary strong { font-weight: 600; }
+    #quest-summary em { font-style: italic; }
+    #quest-summary code { font-family: ui-monospace, Menlo, monospace; font-size: 0.92em; background: #f1ebdd; padding: 1px 4px; border-radius: 3px; }
+    #quest-summary ul, #quest-summary ol { margin: 0 0 10px 18px; padding: 0; }
+    #quest-summary li { margin: 0 0 4px; }
+    #quest-summary h2, #quest-summary h3, #quest-summary h4 { font-size: 15px; margin: 8px 0 4px; }
+    #quest-summary a { color: #15604f; }
   `
   document.head.appendChild(style)
 }

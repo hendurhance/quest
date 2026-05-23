@@ -1,66 +1,69 @@
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
+
+type Theme = 'light' | 'dark'
+
+const LS_KEY = 'quest-theme'
+
+/**
+ * Apply the last-known theme synchronously (from localStorage) before the app
+ * mounts, so dark-mode users don't get a flash of light paper. chrome.storage
+ * is async and would paint light first; localStorage is the instant mirror.
+ */
+export function applyStoredTheme(): void {
+  let stored: string | null = null
+  try {
+    stored = localStorage.getItem(LS_KEY)
+  } catch {
+    // localStorage unavailable — fall through to light
+  }
+  document.documentElement.setAttribute('data-theme', stored === 'dark' ? 'dark' : 'light')
+}
+
+// Module-level so every useTheme() consumer (header toggle, settings, …) shares
+// one reactive source of truth.
+const theme = ref<Theme>('light')
 
 export function useTheme() {
-  const theme = ref<'light' | 'dark'>('light')
-  const isLoading = ref(false)
-
-  const loadTheme = async () => {
+  function apply(value: Theme): void {
+    theme.value = value
+    document.documentElement.setAttribute('data-theme', value)
     try {
-      // Check if chrome.storage is available
-      if (typeof chrome === 'undefined' || !chrome.storage) {
-        applyTheme('light')
-        return
-      }
-      
-      const result = await chrome.storage.sync.get(['settings'])
-      const savedTheme = result.settings?.theme || 'light'
-      theme.value = savedTheme
-      applyTheme(savedTheme)
-    } catch (error) {
-      applyTheme('light')
+      localStorage.setItem(LS_KEY, value)
+    } catch {
+      // ignore
     }
   }
 
-  const toggleTheme = async () => {
-    const newTheme = theme.value === 'light' ? 'dark' : 'light'
-    theme.value = newTheme
-    
+  async function persist(value: Theme): Promise<void> {
+    apply(value)
+    if (typeof chrome === 'undefined' || !chrome.storage) return
     try {
-      // Check if chrome.storage is available
-      if (typeof chrome === 'undefined' || !chrome.storage) {
-        applyTheme(newTheme)
-        return
-      }
-      
-      const result = await chrome.storage.sync.get(['settings'])
-      const settings = result.settings || {}
-      settings.theme = newTheme
-      await chrome.storage.sync.set({ settings })
-      applyTheme(newTheme)
+      const { settings } = await chrome.storage.sync.get(['settings'])
+      await chrome.storage.sync.set({ settings: { ...(settings ?? {}), theme: value } })
     } catch (error) {
       console.error('Failed to save theme:', error)
-      // Still apply the theme visually even if saving fails
-      applyTheme(newTheme)
     }
   }
 
-  const applyTheme = (themeName: 'light' | 'dark') => {
-    document.documentElement.setAttribute('data-theme', themeName)
+  function setTheme(value: Theme): Promise<void> {
+    return persist(value)
   }
 
-  // Watch for theme changes
-  watch(theme, (newTheme) => {
-    applyTheme(newTheme)
-  })
-
-  onMounted(async () => {
-    await loadTheme()
-  })
-
-  return {
-    theme,
-    isLoading,
-    toggleTheme,
-    loadTheme,
+  function toggleTheme(): Promise<void> {
+    return persist(theme.value === 'light' ? 'dark' : 'light')
   }
+
+  async function loadTheme(): Promise<void> {
+    if (typeof chrome === 'undefined' || !chrome.storage) return
+    try {
+      const { settings } = await chrome.storage.sync.get(['settings'])
+      apply(settings?.theme === 'dark' ? 'dark' : 'light')
+    } catch {
+      apply('light')
+    }
+  }
+
+  onMounted(loadTheme)
+
+  return { theme, setTheme, toggleTheme, loadTheme }
 }
