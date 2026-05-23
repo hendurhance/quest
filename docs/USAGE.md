@@ -1,8 +1,8 @@
-# Quest - Usage Guide
+# Quest — Usage Guide
 
-A comprehensive guide to using all features of Quest on Google Chrome and Microsoft Edge.
+How to save, read, organize, and (optionally) generate AI summaries and podcasts with Quest on Chrome and Edge.
 
-![Quest Extension Showcase](../images/slide.png)
+![Quest — save, read, and organize articles with optional AI](../images/slide.png)
 
 ---
 
@@ -10,959 +10,372 @@ A comprehensive guide to using all features of Quest on Google Chrome and Micros
 
 1. [Getting Started](#getting-started)
 2. [Saving Articles](#saving-articles)
-3. [Managing Articles](#managing-articles)
-4. [Organization Features](#organization-features)
-5. [AI Features](#ai-features)
-6. [Settings & Configuration](#settings--configuration)
-7. [Import & Export](#import--export)
-8. [Keyboard Shortcuts](#keyboard-shortcuts)
-9. [Tips & Best Practices](#tips--best-practices)
+3. [The Library](#the-library)
+4. [The Reader](#the-reader)
+5. [Highlights & Live-Page Annotations](#highlights--live-page-annotations)
+6. [Organization](#organization)
+7. [AI Features](#ai-features)
+8. [Settings](#settings)
+9. [Keyboard & Command Palette](#keyboard--command-palette)
+10. [Privacy & Data](#privacy--data)
+11. [Tips & Troubleshooting](#tips--troubleshooting)
 
 ---
 
 ## Getting Started
 
-### First Launch
+### First launch
 
-When you first install Quest:
+- Click the Quest icon in the toolbar to open the **popup** — your one-click
+  capture surface.
+- Open the **Library** (the full-page manager) from the popup's *Open library*
+  button, or the popup masthead's library icon. It opens in its own tab.
+- The first time the Library loads with no shelves, Quest seeds four starter
+  shelves: **Essays**, **Development**, **Research**, **News**. You can rename,
+  recolor, add, or remove them at any time.
 
-1. Click the extension icon in your browser toolbar
-2. The popup will appear (360px width, compact design)
-3. Default categories are automatically created:
-   - **Uncategorized**
-   - **Tech**
-   - **News**
-   - **Personal**
-   - **Work**
-   - **Research** 
-   - **General**
-   - **Articles**
-   - **Development** 
-   - **Videos**
+### The three surfaces
 
-### Interface Overview
+| Surface | What it's for |
+|---------|---------------|
+| **Popup** | Quickly save the current page (tags, shelf, AI toggles) |
+| **Library** | Browse, search, filter, organize, and open articles |
+| **Reader** | A built-in, full-screen reading view with a summary/podcast/highlights rail |
 
-Quest has three main interfaces:
-
-- **Popup** (360x480px) - Quick saving and stats
-- **Manager Dashboard** - Full article library management
-- **AI Dashboard** - Usage analytics and audit logs
+There is no separate dashboard window — AI usage is a panel inside the Library.
 
 ---
 
 ## Saving Articles
 
-### Method 1: Extension Popup
+### From the popup
 
-The fastest way to save the current page:
+![Saving the current page from the popup](../images/popup.png)
 
-![Quest Popup](../images/popup.png)
+1. Click the Quest icon. The popup shows the page title, domain + favicon, and an
+   estimated reading time (word count ÷ 200).
+2. Optionally:
+   - **Tags** — type and press Enter or comma; suggestions come from your most
+     used tags. Backspace removes the last tag.
+   - **Shelf** — pick a category (or leave Uncategorized).
+   - **AI summary on save** — generate a concise summary in the background.
+   - **Generate podcast** — also produce a spoken version.
+   - **Close tab after saving** — on by default.
+3. Click **Save to Quest**. You'll see a confirmation and an *Open library*
+   button; the footer shows your totals and three most recent saves.
 
-1. **Click the extension icon** while on any webpage
-2. The popup automatically loads:
-   - Page title
-   - Domain and favicon
-   - Estimated reading time (based on word count)
-3. **Customize your save** (optional):
-   - Add tags (comma-separated: `javascript, tutorial, web-dev`)
-   - Select a category from dropdown
-   - Enable "Close tab after saving" to auto-close
-   - Enable "Generate AI Summary" for instant summary
-   - Enable "Create Podcast" for text-to-speech audio
-4. **Click "Save Article"**
-5. Success! You'll see:
-   - Quick Stats updated (Saved, Unread, Read Today)
-   - Article appears in Recent Saves
+The AI toggles default to your **Automation** settings. Quest extracts the
+article body when saving (it asks the page's content script first, then falls
+back to injecting a one-off extractor, keeping whichever yields more text).
 
-**Auto-Detection Features:**
-- Automatically extracts article content
-- Calculates reading time (~200 words per minute)
-- Captures favicon for visual recognition
-- Normalizes URL to prevent duplicates
+### From the right-click menu
 
-### Method 2: Context Menu (Right-Click)
+Right-click to save without opening the popup:
 
-Save without opening the popup:
+- **Save Page to Quest** — the current page
+- **Save Link to Quest** — a link you're hovering
+- **Save Selection to Quest** — selected text (used as the title)
 
-**Save Current Page:**
-1. Right-click anywhere on the page
-2. Select **"Save Page to Quest"**
-3. Article saved with smart category auto-detection
+### From the Library
 
-**Save a Link:**
-1. Right-click any link
-2. Select **"Save Link to Quest"**
-3. Link saved for later reading
+Use **Add by URL** (the `+` in the header, or the command palette) to add an
+entry by URL and optional title. This creates a bookmark stub without an
+extracted body — best for pages you can't open right now. Open the original
+later to capture full text by re-saving.
 
-![Save Link Context Menu](../images/save-link.png)
+### Duplicates & auto-read
 
-**Save Selected Text:**
-1. Highlight text on any page
-2. Right-click the selection
-3. Select **"Save Selection to Quest"**
-4. Creates article with selected text as title
-
-**Smart Category Detection:**
-- `github.com`, `stackoverflow.com` → Tech
-- `nytimes.com`, `bbc.com` → News
-- All others → Uncategorized
-
-### Method 3: Manual Entry
-
-Add articles that you can't visit directly:
-
-1. Open Manager Dashboard
-2. Click **"+"** button in header
-3. Fill in the Article Modal:
-   - **URL** (required) - Full article URL
-   - **Title** (required) - Article title
-   - **Category** - Select from dropdown
-   - **Tags** - Add multiple tags (press Enter or comma)
-   - **Pin** - Mark as favorite
-   - **Mark as read** - Already read it?
-4. Click **"Add Article"**
-
-**Tag Suggestions:**
-- As you type, existing tags appear
-- Click a suggestion to add it
-- Prevents duplicate/similar tags
-
-### Duplicate Prevention
-
-Quest automatically prevents duplicate saves:
-
-- URLs are normalized (removes tracking params)
-- `https://example.com/article?utm_source=...` becomes `https://example.com/article`
-- If article exists, you'll see **"Already Saved"** button
-- Click it to jump to the article in Manager
-
-### Automatic Reading Detection
-
-When you visit a saved article:
-
-- Extension detects you're reading it
-- Automatically marks as **Read**
-- Sets `dateRead` timestamp
-- Updates "Read Today" counter
-- Badge count updates in real-time
+- **Deduplication**: URLs are normalized (https, no `www.`, no trailing slash,
+  tracking params and the `#fragment` dropped), so the same article saved with
+  different tracking links is matched as one. The popup shows the page as already
+  saved when it matches.
+- **Auto-read**: when you open a saved article's URL in the browser, Quest marks
+  it **read** and updates the unread badge.
 
 ---
 
-## Managing Articles
+## The Library
 
-### Manager Dashboard
+![The library: views and shelves on the left, your articles in the middle](../images/library.png)
 
-Open the full manager:
-- Click **"View All"** in popup, or
-- Click extension icon → **"Manager"**, or
-- Right-click extension icon → **"Manager"**
+### Header
 
-![Manager Dashboard](../images/manager.png)
+- **Brand** + **search** (filters by title, domain, excerpt, and tags as you
+  type — case-insensitive).
+- **Add by URL** (`+`), **AI usage** (chart), **theme toggle** (Paper/Ink), and
+  **Settings** (gear).
+- `⌘K` / `Ctrl+K` opens the **command palette**.
 
-### Dashboard Layout
+### Left rail
 
-**Header (Top Bar):**
-- Logo and "My Library" title
-- **Search bar** - Search by title, content, or metadata
-- **Add Article** (+) - Manual entry modal
-- **Export/Import** - Backup/restore data
-- **AI Dashboard** - View usage analytics
-- **Theme Toggle** - Switch light/dark mode
-- **Settings** (⚙️) - Configure extension
+- **Contents** — views with live counts: **All**, **Unread**, **Reading**,
+  **Favorites**, **Archive**.
+- **Shelves** — your categories with per-shelf counts. Hover a shelf for **edit**
+  and **delete**; the `+` creates a new shelf.
+- **Tags** — your most-used tags; click one to filter.
 
-**Sidebar (Left Panel):**
-- **Views** - Filter by status
-  - All Articles (total count)
-  - Reading List (unread count)
-  - Favorites (pinned count)
-  - Archive (archived count)
-- **Categories** - Filter by category
-  - Click category to filter
-  - See article count per category
-  - Right-click for options (Edit/Delete)
-  - **+** button to create new category
+### Toolbar & cards
 
-**Main Content Area:**
-- Article cards in grid or list view
-- View selector (Grid/List) at top
-- Sort options:
-  - Date Added (newest/oldest)
-  - Title (A-Z)
-  - Reading Time (shortest/longest)
-- Filter controls:
-  - By category, tag, or domain
-  - Read/Unread status
-  - Show/hide archived
+- **Sort**: Newest first, Oldest first, Title A–Z, Title Z–A, Source.
+- **View**: list or grid.
+- **Select**: enter selection mode for bulk actions.
 
-### Article Card Actions
+Each **entry card** shows the title, domain, reading time, and status, plus small
+indicators — a **sparkles** icon if it has a summary and a **headphones** icon if
+it has a podcast. Hover (when not selecting) for quick actions: **Pin/Unpin**,
+**Archive/Unarchive**, **Delete**. Clicking the card opens it in the Reader.
 
-Each article card shows:
+Long lists paginate (24 per page).
 
-**Article Information:**
-- Favicon and title
-- Domain and reading time
-- Category (colored dot)
-- Tags (clickable badges)
-- Date added (relative: "2 hours ago")
-- Read status indicator
+### Bulk actions
 
-**Quick Actions (Hover):**
-- **Open** - View article in new tab
-- **Pin/Unpin** - Toggle favorite status
-- **Archive** - Move to archive
-- **Delete** - Remove permanently
+Click **Select**, tick the cards you want, and use the floating bar at the bottom:
 
-**AI Features (if available):**
-- **Summary badge** - Click to view summary
-- **Podcast badge** - Click to listen
-- **Generate Summary** - Create AI summary
-- **Create Podcast** - Convert to audio
+- **Read** — mark read
+- **Pin** — toggle favorite
+- **Archive**
+- **Group** — let AI assign a shelf and tags to each
+- **Delete**
 
-### Bulk Operations
-
-Select multiple articles for batch actions:
-
-1. **Enable Select Mode:**
-   - Click checkbox icon in toolbar, or
-   - Check any article's checkbox
-2. **Select Articles:**
-   - Check individual checkboxes
-   - Or use "Select All" at top
-3. **Perform Actions:**
-   - Mark as Read/Unread
-   - Archive/Unarchive
-   - Delete (with confirmation)
-   - Change Category
-   - Add Tags
-4. **Exit Select Mode:**
-   - Click checkbox icon again
-   - Or click "Deselect All"
-
-### Searching Articles
-
-**Full-Text Search:**
-- Search bar in header
-- Searches across:
-  - Article titles
-  - Article content
-  - Tags
-  - Domains
-- Real-time filtering
-- Case-insensitive
-
-**Search Tips:**
-- `javascript` - Finds all JS articles
-- `tutorial` - Finds all tutorials
-- `github.com` - All GitHub articles
-- Combine with filters for precision
-
-### Sorting & Filtering
-
-**Sort Options:**
-- **Date Added** - Newest or oldest first
-- **Title** - Alphabetical A-Z or Z-A
-- **Reading Time** - Shortest or longest
-
-**Filter Options:**
-- **Category** - Show single category
-- **Tag** - Click tag badge to filter
-- **Domain** - Filter by source website
-- **Status** - Read, Unread, Archived
-- **Pinned** - Favorites only
-
-**Multi-Filter:**
-- Combine filters for precise results
-- Example: "Tech" category + "Unread" + "tutorial" tag
-- Clear filters individually or all at once
+**Done** exits selection mode.
 
 ---
 
-## Organization Features
+## The Reader
 
-### Categories
+![The Reader with the summary in the Distill rail](../images/reader-summary.png)
 
-**Purpose:**
-- Broad topic grouping
-- Color-coded for visual scanning
-- One category per article
+Clicking an article opens Quest's built-in Reader (opening an unread article
+moves it to **Reading**). It's a full-screen, two-column view:
 
-**Create Category:**
-1. Click **+** next to "Categories" in sidebar
-2. Enter category name
-3. Choose a color (16 colors available)
-4. Click **"Create Category"**
+- A top **progress bar** tracks and saves how far you've scrolled.
+- The header has **‹ Library**, the read status, and an **Original ↗** link to
+  the source page.
+- The article renders in an editorial serif layout with a drop-cap lead
+  paragraph. If no body text was captured, you'll be pointed to the original.
 
-**Edit Category:**
-1. Right-click category in sidebar
-2. Select **"Edit Category"**
-3. Change name or color
-4. Click **"Save"**
+On the right is the **Distill** rail:
 
-**Delete Category:**
-1. Right-click category in sidebar
-2. Select **"Delete Category"**
-3. **Note:** Cannot delete if articles exist
-4. Move articles first, then delete
+- **Summary** — *Generate* (or *Regenerate*); shows the provider and model and
+  renders the summary as formatted text.
+- **Podcast** — *Generate* (or *Regenerate*); shows provider, voice, and
+  duration with an audio player.
+- **Highlights** — every highlight on the article, each with an optional note and
+  a *Remove* action.
 
-**Category Colors:**
-- Gray, Blue, Green, Red, Yellow, Purple, Pink, Teal
-- Orange, Indigo, Lime, Cyan, Amber, Rose, Sky, Violet
+Each card collapses from its header, so you can keep just what you're using open.
+
+![The Distill rail showing the podcast player and a highlight with a note](../images/reader-podcast-highlight.png)
+
+---
+
+## Highlights & Live-Page Annotations
+
+### Highlighting in the Reader
+
+Select text in the Reader and click **Highlight**. (Highlights are anchored
+within a single paragraph.) Each highlight appears in the Highlights card where
+you can add a note or remove it.
+
+### On the original page
+
+When you revisit a page that's saved in Quest, the content script:
+
+- Re-renders your highlights directly on the live page (matched by text, since
+  the live DOM differs from the captured copy).
+- Shows a **green pill** in the bottom-right. If the article has a summary, click
+  the pill to expand it and read the summary in place.
+
+![Highlight and summary pill rendered on the original page](../images/page-annotations.png)
+
+> If the pill doesn't appear during local development, reload the extension at
+> `chrome://extensions/` and reload the page — each build replaces the
+> content-script files (see CONTRIBUTING.md).
+
+---
+
+## Organization
+
+### Shelves (categories)
+
+A shelf is a single broad category per article, with a color.
+
+- **Create**: `+` next to *Shelves*, name it, pick a color (8 colors).
+- **Edit / Delete**: hover the shelf in the rail. A shelf with articles can't be
+  deleted until you move or remove them.
 
 ### Tags
 
-**Purpose:**
-- Multi-dimensional organization
-- Multiple tags per article
-- Flexible, organic structure
+Multiple tags per article, lowercased, tracked with a usage count. Your most-used
+tags surface in the rail and as suggestions in the popup. Click a tag to filter.
 
-**Add Tags:**
-- When saving: comma-separated in popup
-- In Manager: Edit article modal
-- Auto-suggestions from existing tags
+### Favorites & Archive
 
-**Tag Filtering:**
-- Click any tag badge to filter
-- See all articles with that tag
-- Combine with other filters
-
-**Tag Management:**
-- Tags are tracked with usage count
-- Popular tags appear first in suggestions
-- Unused tags automatically cleaned up
-
-### Favorites (Pinned Articles)
-
-**Pin Articles:**
-- Click pin icon on article card
-- Or check "Pin" in article modal
-- Appears in "Favorites" view
-
-**Uses:**
-- Important references
-- Currently reading
-- High-priority items
-- Bookmark frequently accessed
-
-### Archive
-
-**Purpose:**
-- Declutter main library
-- Keep read articles organized
-- Auto-archive old reads
-
-**Manual Archive:**
-- Click archive icon on article
-- Or bulk archive multiple articles
-
-**Auto-Archive:**
-- Enable in Settings
-- Set days after reading (1-365)
-- Runs daily in background
-- Only archives read articles
-
-**Viewing Archive:**
-- Click "Archive" in sidebar
-- Shows all archived articles
-- Can unarchive anytime
+- **Pin** an article (star) to find it under **Favorites**.
+- **Archive** to clear it from the main views without deleting it; **Archive** in
+  the rail lists them, and you can unarchive anytime.
+- **Auto-archive** (optional, in Settings) tidies away **read** articles after a
+  set number of days, runs daily, and never touches pinned articles.
 
 ---
 
 ## AI Features
 
-Quest supports multiple AI providers. **You must bring your own API keys.**
+AI is **optional** and **off by default**. You bring your own API keys; calls go
+directly from your browser to the provider.
 
-![AI Features](../images/ai-features.png)
+### Providers, models & voices
 
-### Supported Providers
+**Summaries**
 
-**Summary Providers:**
-- **OpenAI** - GPT-5 Nano, GPT-5 Mini, GPT-5, GPT-4.1 Nano, GPT-4.1 Mini, GPT-4.1
-- **Google Gemini** - Gemini 2.5 Flash-Lite, Gemini 2.5 Flash, Gemini 2.5 Pro
+- **OpenAI** — GPT-5 Nano, GPT-5 Mini, GPT-5, GPT-4.1 Nano, GPT-4.1 Mini, GPT-4.1
+- **Google Gemini** — Gemini 2.5 Flash-Lite, Gemini 2.5 Flash, Gemini 2.5 Pro
+  *(Gemini 2.5 Flash is the default)*
 
-**TTS (Text-to-Speech) Providers:**
-- **ElevenLabs** - Flash v2.5, Turbo v2.5, Multilingual v2, v3
-- **Google Gemini TTS** - Gemini 2.5 Flash TTS, Gemini 2.5 Pro TTS (70+ voices)
+**Podcasts (text-to-speech)**
 
-### Setting Up AI
+- **Google Gemini TTS** — Gemini 2.5 Flash TTS, Gemini 2.5 Pro TTS (30 voices)
+  *(default)*
+- **ElevenLabs** — Flash v2.5, Turbo v2.5, Multilingual v2, v3 (8 voices)
 
-**Get API Keys:**
+### Setup
 
-1. **OpenAI:**
-   - Visit [platform.openai.com](https://platform.openai.com/)
-   - Create account or sign in
-   - Go to API Keys section
-   - Create new secret key
-   - Copy and save securely
+1. Get a key from your provider:
+   [OpenAI](https://platform.openai.com/), [Google Gemini](https://ai.google.dev/)
+   (free tier available), or [ElevenLabs](https://elevenlabs.io/).
+2. Open **Settings**.
+   - Under **AI Summaries**, choose a provider and model.
+   - Under **Podcasts**, choose a voice provider and voice.
+   - Under **API Keys**, paste the key. Quest only shows the keys for the
+     providers you've selected. Click **Test** to verify, then **Save settings**.
 
-2. **Google Gemini:**
-   - Visit [ai.google.dev](https://ai.google.dev/)
-   - Get API key (free tier available)
-   - 15 requests/minute free
-   - 100 requests/day for TTS
+Keys are encrypted on your device and never synced.
 
-3. **ElevenLabs:**
-   - Visit [elevenlabs.io](https://elevenlabs.io/)
-   - Sign up for account
-   - Get API key from profile
-   - 10,000 characters/month free
+### Summaries
 
-**Configure in Extension:**
+Two kinds:
 
-1. Open Manager → Settings (⚙️)
-2. Scroll to **"AI Summary Configuration"**
-3. Choose provider (OpenAI or Gemini)
-4. Enter API key
-5. Click **"Test Connection"**
-6. Select model (optional)
-7. Click **"Save Settings"**
+- **Concise** — a tight ~200–300-word overview, plain prose. This is what the
+  Reader's *Generate* button and *AI summary on save* produce.
+- **Extended** — a longer, conversational, spoken-style retelling whose length
+  scales with the article. This is what a podcast is generated from.
 
-**For TTS:**
-1. Scroll to **"Text-to-Speech Configuration"**
-2. Choose provider (ElevenLabs or Gemini)
-3. Enter API key
-4. Click **"Test Connection"**
-5. Select voice (if ElevenLabs)
-6. Click **"Save Settings"**
+Generation is **idempotent**: regenerating replaces the existing summary of that
+kind rather than piling up duplicates. Summaries render with formatting (bold,
+italics, lists, code, links) in the Reader and on the live-page pill.
 
-**Security:**
-- API keys encrypted with AES-256-GCM
-- Stored using Web Crypto API
-- Never transmitted to our servers
-- Only used for direct API calls
+### Podcasts
 
-### Generating Summaries
+From the Reader's Podcast card (or *Generate podcast* on save), Quest produces an
+extended summary first if one doesn't exist, then synthesizes speech with your
+chosen voice. Audio is stored **locally** (MP3 from ElevenLabs, WAV from Gemini).
+The player supports play/pause, scrubbing, and a playback-speed control (1× →
+1.25× → 1.5× → 2×). Regenerating replaces the prior audio.
 
-**Two Summary Types:**
+### AI grouping
 
-1. **Concise Summary** (~200 tokens)
-   - Quick overview
-   - Main points only
-   - Fast generation
-   - Lower cost
+Let AI choose a shelf and tags for you:
 
-2. **Extended Summary** (~800 tokens)
-   - Detailed breakdown
-   - Key insights
-   - Supporting details
-   - Better for podcasts
+- **On save** — enable *AI grouping on save* in Settings.
+- **In bulk** — select articles in the Library and choose **Group**.
 
-**Generate Summary:**
+It prefers an existing shelf when one fits and otherwise proposes a short new one.
 
-**Method 1: During Save**
-1. In popup, check **"Generate AI Summary"**
-2. Save article
-3. Summary generates in background
-4. View in Manager when ready
+### AI usage
 
-**Method 2: From Manager**
-1. Click article's **"Generate Summary"** button
-2. Choose type (Concise or Extended)
-3. Wait for generation (5-30 seconds)
-4. Summary badge appears when done
-
-**View Summary:**
-1. Click **"Summary"** badge on article
-2. Summary modal opens showing:
-   - Full summary text
-   - Summary type (Concise/Extended)
-   - Token usage
-   - Estimated cost
-   - Generation timestamp
-3. **Actions:**
-   - Regenerate (create new version)
-   - Copy to clipboard
-   - Close modal
-
-![AI Summary View](../images/ai-summary.png)
-
-**Summary Features:**
-- Stored permanently with article
-- Supports both types per article
-- Includes token/cost tracking
-- Can regenerate anytime
-
-### Creating Podcasts
-
-**Requirements:**
-- Article must have **Extended Summary**
-- Generate extended summary first
-- TTS provider configured
-
-**Generate Podcast:**
-
-**Method 1: During Save**
-1. Check **"Create Podcast"**
-2. Ensure extended summary enabled
-3. Save article
-4. Podcast generates in background
-
-**Method 2: From Manager**
-1. Ensure article has extended summary
-2. Click **"Create Podcast"** button
-3. Choose TTS provider (if prompted)
-4. Select voice (if ElevenLabs)
-5. Wait for generation (30-90 seconds)
-
-**Listen to Podcast:**
-1. Click **"Podcast"** badge on article
-2. Audio player modal opens with:
-   - Play/Pause controls
-   - Progress bar
-   - Current time / Total duration
-   - Playback speed (0.5x - 2x)
-   - Volume control
-3. **Actions:**
-   - Play/Pause audio
-   - Seek to position
-   - Adjust playback speed
-   - Download audio file
-   - Inject into page (listen while browsing)
-   - Close modal
-
-![Podcast Player](../images/podcast.png)
-
-**Podcast Features:**
-- Stored as WAV audio locally
-- Offline playback support
-- Natural-sounding voices
-- Variable playback speed
-- Download for external use
-
-### AI Dashboard
-
-**View Analytics:**
-1. Open Manager
-2. Click **AI Dashboard** icon in header
-3. See comprehensive stats:
-
-![AI Dashboard and Audit Logs](../images/audit-logs.png)
-
-**Usage Statistics:**
-- Total API calls
-- Summaries generated
-- Podcasts created
-- Total tokens used
-- Estimated total cost
-- Cost per provider
-
-**Audit Logs:**
-- All AI operations logged
-- Filter by:
-  - Operation type (summary/podcast)
-  - Provider (OpenAI/Gemini/ElevenLabs)
-  - Date range
-- Details per operation:
-  - Article title
-  - Operation type
-  - Provider and model
-  - Tokens used
-  - Cost
-  - Timestamp
-  - Success/Error status
-
-**Cost Tracking:**
-- Real-time cost calculation
-- Per-provider breakdown
-- Token usage analytics
-- Helps manage API budgets
+The **AI usage** panel (chart icon in the header) shows totals — summaries,
+podcasts, requests, and estimated cost — plus a recent-activity log with the
+operation, provider, time, and success/failure.
 
 ---
 
-## Settings & Configuration
+## Settings
 
-Access Settings: Manager → ⚙️ icon
+Open from the gear icon in the Library header.
 
-### General Settings
+- **Appearance** — theme: **Paper** (light) or **Ink** (dark).
+- **AI Summaries** — summary provider and model.
+- **Podcasts** — voice provider and voice.
+- **API Keys** — only the providers you're using; paste, **Test**, save. Keys are
+  encrypted locally and never synced.
+- **Automation**
+  - **Summarise on save** — generate a summary on every save.
+  - **Podcast on save** — also produce a spoken version.
+  - **AI grouping on save** — let AI pick the shelf and tags.
+  - **Auto-archive** — tidy away read articles, with an *Archive after N days*
+    field.
 
-**Theme:**
-- Light mode (default)
-- Dark mode
-- Syncs across all extension pages
-- System dark mode compatible
-
-**Default Category:**
-- Category for new articles
-- Applies when no category selected
-- Defaults to "Uncategorized"
-
-### Auto-Archive Settings
-
-**Enable Auto-Archive:**
-- Toggle on/off
-- Archives read articles automatically
-- Runs daily via Chrome Alarms
-
-**Archive After (Days):**
-- Set 1-365 days
-- Counts from `dateRead` timestamp
-- Example: Set to 30 = archives after 30 days of reading
-- Only applies to read articles
-- Pinned articles protected from auto-archive
-
-**How It Works:**
-1. Daily background check (configurable time)
-2. Finds articles marked as read
-3. Checks if days elapsed ≥ setting
-4. Archives eligible articles
-5. Skips pinned articles
-
-### Reminder Settings
-
-**Enable Reminders:**
-- Toggle reading reminders on/off
-- Chrome notification support
-
-**Reminder Time:**
-- Set specific time (24-hour format)
-- Daily reminder to read saved articles
-- Shows unread count in notification
-
-**Notification Actions:**
-- Click to open Manager
-- Dismiss reminder
-
-### AI Settings
-
-**Auto Summary:**
-- Enable to generate summaries on save
-- Applies to popup saves
-- Uses concise summary by default
-- Requires API key configured
-
-**Auto Podcast:**
-- Enable to generate podcasts on save
-- Requires extended summary first
-- Generates after summary completes
-- Uses configured TTS provider
-
-**Summary Provider:**
-- Choose OpenAI or Gemini
-- Different models available
-- Cost/speed tradeoffs
-- **Recommended:** Gemini (free tier, fast)
-
-**TTS Provider:**
-- Choose ElevenLabs or Gemini
-- Voice quality differences
-- Different pricing
-- **Recommended:** Gemini (affordable, good quality)
-
-### Model Selection
-
-**OpenAI Models:**
-- **GPT-5 Nano** - Fastest, most cost-efficient (~$0.0002/summary) ⭐
-- **GPT-5 Mini** - Faster, cost-efficient reasoning (~$0.001/summary)
-- **GPT-5** - Best for coding and agentic tasks (~$0.005/summary)
-- **GPT-4.1 Nano** - Fastest GPT-4.1 (~$0.0003/summary)
-- **GPT-4.1 Mini** - Smaller, faster intelligence model (~$0.002/summary)
-- **GPT-4.1** - Smartest non-reasoning model (~$0.008/summary)
-
-**Gemini Models:**
-- **Gemini 2.5 Flash-Lite** - Fastest, cost-efficient (~$0.0002/summary)
-- **Gemini 2.5 Flash** - Best price-performance (~$0.001/summary) ⭐
-- **Gemini 2.5 Pro** - State-of-the-art reasoning (~$0.005/summary)
-
-**ElevenLabs Models:**
-- **Flash v2.5** - Fastest, ultra-low latency (~75ms)
-- **Turbo v2.5** - Fast and natural, low latency (~250-300ms) ⭐
-- **Multilingual v2** - Most stable, 29 languages
-- **v3** - Most expressive, 70+ languages (Alpha)
-
-**ElevenLabs Voices:**
-- Multiple male/female voices
-- Preview available in settings
-- Natural intonation
-- Emotional expression
-
-**Gemini TTS Models:**
-- **Gemini 2.5 Flash TTS** - Fast, cost-effective ($10 per 1M chars) ⭐
-- **Gemini 2.5 Pro TTS** - Highest quality ($80 per 1M chars)
-
-**Gemini TTS Voices:**
-- 70+ high-quality voices
-- Multiple languages
-- Male/female options
-- Studio quality
-
-### Data Management
-
-**Storage Information:**
-- View total articles saved
-- IndexedDB size
-- Audio files size
-- Category/tag counts
-
-**Clear Data:**
-- Clear all articles (irreversible)
-- Clear summaries only
-- Clear audio files only
-- Export first for backup!
+Settings sync across your Chrome/Edge instances (API keys do not).
 
 ---
 
-## Import & Export
+## Keyboard & Command Palette
 
-### Export Your Library
+Quest is mouse-first, with one shortcut:
 
-**Full Export:**
-1. Open Manager
-2. Click **Export/Import** icon in header
-3. Click **"Export All Data"**
-4. Choose what to export:
-   - ✅ Articles
-   - ✅ Categories
-   - ✅ Tags
-   - ✅ Settings
-   - ✅ Summaries
-   - ⚠️ Audio files (warning: large size)
-5. Click **"Export"**
-6. JSON file downloads: `quest-backup-YYYY-MM-DD.json`
+- **`⌘K` / `Ctrl+K`** — open the command palette.
 
-**Selective Export:**
-- Export filtered articles only
-- Apply filters first
-- Export → Select visible only
-
-**Export Format:**
-- JSON file
-- Human-readable
-- Includes all metadata
-- Audio as base64 (if included)
-
-### Import Data
-
-**Import Backup:**
-1. Open Manager → Export/Import
-2. Click **"Import Data"**
-3. Choose JSON file
-4. Select import mode:
-   - **Merge** - Add to existing data (duplicates skipped)
-   - **Replace** - Clear existing, import fresh
-5. Click **"Import"**
-6. Wait for completion
-7. Success notification shows counts
-
-**Import Validation:**
-- Validates JSON structure
-- Checks for required fields
-- Reports errors clearly
-- Partial imports supported
-
-**What's Imported:**
-- All articles with content
-- Categories (with colors)
-- Tags (with usage counts)
-- Settings (optional)
-- Summaries (if available)
-- Audio files (if included)
-
-**Merge Behavior:**
-- Skips duplicate URLs
-- Preserves existing data
-- Adds new categories/tags
-- Combines intelligently
-
-**Replace Behavior:**
-- Clears all existing data
-- Fresh start
-- Use with caution!
-- Export first for safety
+In the palette, type to search your articles or filter commands (Add by URL, open
+Settings, AI usage, toggle theme, jump to a view). Navigate with **↑ / ↓**,
+**Enter** to run, **Esc** to close. **Esc** also closes modals.
 
 ---
 
-## Keyboard Shortcuts
+## Privacy & Data
 
-### Global Shortcuts
-
-Currently, Quest uses mouse/click interactions. Keyboard shortcuts planned for v1.1.0.
-
-**Planned Shortcuts:**
-- `Ctrl+Shift+S` - Save current page
-- `Ctrl+Shift+M` - Open Manager
-- `Ctrl+Shift+F` - Focus search
-- `Escape` - Close modals
-- `Arrow keys` - Navigate articles
-- `Enter` - Open selected article
-
-**Vote for Shortcuts:**
-Open a discussion on GitHub to request specific shortcuts!
+- **Articles, summaries, audio, and highlights** live in a local **IndexedDB**
+  (`quest`) on your device — nothing is uploaded to a Quest server.
+- **Settings** sync via Chrome Storage; **API keys** are encrypted on the device
+  and are never synced.
+- **AI calls** go directly from your browser to the provider you configured.
+- **Migration**: the first time the updated extension runs, your data from the
+  previous version is imported automatically into the new store.
 
 ---
 
-## Tips & Best Practices
+## Tips & Troubleshooting
 
-### Organization Strategy
+### Workflow tips
 
-**Use Categories for Broad Topics:**
-- Tech, News, Personal, Work, Hobbies
-- Keep it simple (5-10 categories max)
-- Color-code for visual scanning
+- Save fast from the popup or right-click. Set a shelf and tags as you save, or
+  let **Group** sort things out for you afterward.
+- Use **Extended** summaries when you plan to listen — they're written to be
+  spoken.
+- Prefer **Gemini** for low-cost summaries and TTS; switch providers per task in
+  Settings.
 
-**Use Tags for Specifics:**
-- `javascript`, `tutorial`, `to-read`, `reference`
-- Multi-dimensional organization
-- Easy filtering and search
+### Common issues
 
-**Pin Important Articles:**
-- Current reading list
-- Reference materials
-- High-priority items
-- Frequently accessed
+**Can't find a saved article**
+- Check the **Archive** view, or search by title/domain. Remember archived
+  articles are hidden from All/Unread.
 
-**Archive Regularly:**
-- Enable auto-archive
-- Keep main library focused
-- Archive = done, not deleted
-- Can always search archive
+**The green pill / highlights don't show on a page**
+- In development, reload the extension and the page after a build.
+- Confirm the page is actually saved (the popup will show it as saved).
 
-### Reading Workflow
+**AI features fail**
+- Verify the key in Settings with **Test**; check the provider for quota/credits.
 
-**Recommended Flow:**
+**"Article content is too short"**
+- The page body wasn't captured (e.g. a stub added by URL, or a page that blocks
+  extraction). Open the original and re-save to capture the text.
 
-1. **Save Everything Quickly**
-   - Right-click to save
-   - Don't overthink categories
-   - Add tags later if needed
+**Podcast won't generate**
+- It needs article text to summarize first; see the note above.
 
-2. **Review in Manager**
-   - Open Manager daily/weekly
-   - Scan "Reading List" view
-   - Pin important articles
-   - Archive or delete uninteresting
+### Getting help
 
-3. **Read and Archive**
-   - Articles auto-mark as read
-   - Auto-archive after X days
-   - Keep library clean
-
-4. **Search When Needed**
-   - Use full-text search
-   - Filter by tags/categories
-   - Quick access to references
-
-### AI Usage Tips
-
-**When to Use AI:**
-- **Long articles** - Summaries save time
-- **Technical content** - Quick understanding
-- **Research** - Multiple articles, compare summaries
-- **Podcasts** - Listen while commuting/exercising
-
-**Cost Management:**
-- Use **Gemini** for summaries (nearly free)
-- Use **Gemini TTS** for podcasts (affordable)
-- Monitor usage in AI Dashboard
-- Set personal budget limits
-
-**Quality Tips:**
-- Extended summaries better for podcasts
-- Regenerate if summary unclear
-- Try different models for comparison
-- Preview voices before bulk generation
-
-### Performance Tips
-
-**Keep Library Manageable:**
-- Archive old/read articles
-- Delete uninteresting saves
-- Export and clear periodically
-- Target: <1000 active articles
-
-**Search Efficiently:**
-- Use specific keywords
-- Combine with filters
-- Sort by relevance
-- Tag well for better finding
-
-**Backup Regularly:**
-- Export monthly
-- Store backups safely
-- Test imports occasionally
-- Before major changes
-
-### Privacy & Security
-
-**Your Data is Safe:**
-- All local storage (IndexedDB)
-- No cloud uploads
-- API keys encrypted
-- Open source = auditable
-
-**API Key Security:**
-- Never share your keys
-- Rotate keys periodically
-- Monitor usage on provider dashboards
-- Revoke if compromised
-
-**Chrome Sync:**
-- Only settings sync across devices
-- Articles stay local per device
-- Disable sync in settings if needed
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**"Already Saved" but can't find article:**
-- Check Archive view
-- Search by title/domain
-- URL might be normalized differently
-
-**Article won't save:**
-- Check if URL is valid
-- Try manual entry in Manager
-- Check browser console for errors
-
-**AI features not working:**
-- Verify API key in Settings
-- Test connection
-- Check provider dashboard for credits
-- See browser console for errors
-
-**Podcast won't play:**
-- Ensure extended summary exists
-- Check if audio generated
-- Try regenerating podcast
-- Check browser audio permissions
-
-**Extension feels slow:**
-- Archive old articles
-- Clear unused summaries/audio
-- Export and fresh start
-- Check IndexedDB size
-
-### Getting Help
-
-- **GitHub Issues:** Report bugs
-- **GitHub Discussions:** Ask questions
-- **Documentation:** Re-read this guide
-- **Browser Console:** Check for errors
-
----
-
-## What's Next?
-
-**Upcoming Features (v1.1.0):**
-- Keyboard shortcuts
-- Advanced search filters
-- Reading statistics dashboard
-- Firefox support
-- More AI models and voices
-- PDF support
-- Browser sync (optional)
-
-**Vote for Features:**
-Open discussions on GitHub to request features!
+- **Bug reports**: open an issue
+- **Questions / ideas**: start a discussion
+- **Service-worker console**: `chrome://extensions/` → *Service worker* for
+  background errors
 
 ---
 
 <div align="center">
 
-**Happy Reading!** 📚
-
-Need help? [Open an issue](https://github.com/yourusername/quest/issues)
+**Happy reading.** 📚
 
 [← Back to README](../README.md)
 
