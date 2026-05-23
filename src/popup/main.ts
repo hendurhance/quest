@@ -1,5 +1,10 @@
 import { createApp } from 'vue'
 import App from './App.vue'
-import '@/styles/variables.css'
+import { pinia } from '@/stores'
+import { applyStoredTheme } from '@/composables/useTheme'
+import '@/design/tokens.css'
+import '@/design/fonts.css'
+import '@/design/base.css'
 
-createApp(App).mount('#app')
+applyStoredTheme()
+createApp(App).use(pinia).mount('#app')
