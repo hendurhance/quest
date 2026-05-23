@@ -1,6 +1,6 @@
 {
   "name": "quest-vue",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Save, organize, and consume web articles efficiently. Optional AI summaries and podcasts. Privacy-first, open source.",
   "type": "module",
   "scripts": {
@@ -14,6 +14,8 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "dompurify": "^3.4.5",
+    "pinia": "^3.0.4",
     "uuid": "^13.0.0",
     "vue": "^3.4.21"
   },

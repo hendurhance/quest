@@ -28,7 +28,6 @@ export default defineConfig({
       input: {
         popup: 'src/popup/index.html',
         manager: 'src/manager/index.html',
-        'ai-dashboard': 'src/ai-dashboard/index.html',
       },
     },
   },
