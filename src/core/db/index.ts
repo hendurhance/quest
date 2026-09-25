@@ -10,6 +10,7 @@ import type { Article, NewArticle, Summary, NewSummary, AudioFile, NewAudioFile 
 
 export class QuestDB {
   private db: IDBDatabase | null = null
+  private opening: Promise<void> | null = null
 
   articles!: ArticleRepo
   summaries!: SummaryRepo
@@ -20,8 +21,15 @@ export class QuestDB {
   reminders!: ReminderRepo
   audit!: AuditRepo
 
-  async init(): Promise<void> {
-    if (this.db) return
+  init(): Promise<void> {
+    this.opening ??= this.open().catch((error) => {
+      this.opening = null
+      throw error
+    })
+    return this.opening
+  }
+
+  private async open(): Promise<void> {
     const db = await openDatabase()
     this.articles = new ArticleRepo(db)
     this.summaries = new SummaryRepo(db)
@@ -38,6 +46,7 @@ export class QuestDB {
   close(): void {
     this.db?.close()
     this.db = null
+    this.opening = null
   }
 
 

@@ -1,8 +1,7 @@
 import { db } from '@/core/db'
 import type { Summary, SummaryKind, SummaryProviderId } from '@/core/db'
-import { AIProvider, SummaryType } from '@/types'
-import type { SummaryProvider } from '@/types'
-import { calculateCost } from '@/core/ai/models'
+import { SummaryType } from '@/types'
+import { estimateCost } from './pricing'
 import { generateSmartPrompt } from './prompts'
 import { resolveSummaryConfig } from './config'
 import { getSummaryProvider } from './providers'
@@ -11,11 +10,6 @@ import { logAudit, errorMessage } from './audit'
 const KIND_TO_TYPE: Record<SummaryKind, SummaryType> = {
   concise: SummaryType.CONCISE,
   extended: SummaryType.EXTENDED,
-}
-
-const ID_TO_ENUM: Record<SummaryProviderId, SummaryProvider> = {
-  openai: AIProvider.OPENAI,
-  gemini: AIProvider.GEMINI,
 }
 
 export interface SummarizeOptions {
@@ -54,7 +48,7 @@ export async function summarizeArticle(articleId: string, options: SummarizeOpti
       apiKey: config.apiKey,
     })
 
-    const estimatedCost = calculateCost(ID_TO_ENUM[config.provider], config.model, result.inputTokens, result.outputTokens)
+    const estimatedCost = estimateCost(config.model, result.inputTokens, result.outputTokens) ?? undefined
 
     const summary = await db.addSummary({
       articleId,

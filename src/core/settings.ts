@@ -1,7 +1,6 @@
 import type { Settings } from '@/types'
 import { AIProvider } from '@/types'
-import { OPENAI_MODELS, GEMINI_MODELS, GEMINI_TTS_MODELS, ELEVENLABS_MODELS } from '@/core/ai/models'
-import { ELEVENLABS_VOICES, GEMINI_VOICES } from '@/core/ai/voices'
+import { GEMINI_VOICES } from '@/core/ai/voices'
 
 export function defaultSettings(): Settings {
   return {
@@ -14,13 +13,14 @@ export function defaultSettings(): Settings {
     autoSummary: false,
     autoPodcast: false,
     autoGroup: false,
+    closeTabAfterSave: true,
     summaryProvider: AIProvider.GEMINI,
-    openaiModel: OPENAI_MODELS[5].id,
-    geminiModel: GEMINI_MODELS[1].id,
+    openaiModel: '',
+    geminiModel: '',
     ttsProvider: AIProvider.GEMINI,
-    elevenlabsModel: ELEVENLABS_MODELS[2].id,
-    elevenlabsVoiceId: ELEVENLABS_VOICES[0].id,
-    geminiTtsModel: GEMINI_TTS_MODELS[0].id,
+    elevenlabsModel: '',
+    elevenlabsVoiceId: '',
+    geminiTtsModel: '',
     geminiTtsVoice: GEMINI_VOICES[0].id,
   }
 }

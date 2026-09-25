@@ -177,6 +177,7 @@ export interface Settings {
   autoSummary: boolean
   autoPodcast: boolean
   autoGroup: boolean
+  closeTabAfterSave: boolean
 
   // AI Summary Settings
   summaryProvider: SummaryProvider

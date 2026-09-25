@@ -1,21 +1,33 @@
 <template>
   <div class="app" :class="{ 'q-reveal': revealing }">
     <!-- Reader takes over the surface when an article is open -->
-    <Reader v-if="reader.article" @close="closeReader" />
+    <Reader v-if="reader.article" :key="reader.article.id" @close="closeReader" @settings="showSettings = true" />
 
     <template v-else>
-      <AppHeader class="reveal-block" :style="{ '--i': 0 }" @add="showAdd = true" @settings="showSettings = true" @usage="openUsage" />
+      <AppHeader
+        class="reveal-block"
+        :style="{ '--i': 0 }"
+        @add="showAdd = true"
+        @settings="showSettings = true"
+        @usage="openUsage"
+        @menu="railOpen = true"
+      />
 
       <div class="app__main">
         <ContentsRail
           class="reveal-block"
           :style="{ '--i': 1 }"
+          :open="railOpen"
+          @navigate="railOpen = false"
           @new-category="openNewCategory"
           @edit-category="openEditCategory"
           @delete-category="handleDeleteCategory"
         />
+        <Transition name="fade">
+          <div v-if="railOpen" class="rail-scrim" @click="railOpen = false" />
+        </Transition>
 
-        <main class="content reveal-block" :style="{ '--i': 2 }">
+        <main ref="contentEl" class="content reveal-block" :style="{ '--i': 2 }">
           <div class="page-head">
             <h2 class="page-head__title">{{ viewTitle }}</h2>
             <span class="page-head__count">{{ library.visible.length }} {{ library.visible.length === 1 ? 'entry' : 'entries' }}</span>
@@ -33,8 +45,8 @@
                 </select>
               </div>
               <div class="view-toggle">
-                <button :class="{ on: viewMode === 'list' }" title="List" @click="viewMode = 'list'"><QIcon name="list" :size="16" /></button>
-                <button :class="{ on: viewMode === 'grid' }" title="Grid" @click="viewMode = 'grid'"><QIcon name="grid" :size="16" /></button>
+                <button :class="{ on: viewMode === 'list' }" title="List" aria-label="List view" @click="viewMode = 'list'"><QIcon name="list" :size="16" /></button>
+                <button :class="{ on: viewMode === 'grid' }" title="Grid" aria-label="Grid view" @click="viewMode = 'grid'"><QIcon name="grid" :size="16" /></button>
               </div>
               <QButton :variant="selectMode ? 'secondary' : 'ghost'" size="sm" @click="toggleSelect">
                 {{ selectMode ? 'Cancel' : 'Select' }}
@@ -75,12 +87,13 @@
       <Transition name="bulkbar">
         <div v-if="selectMode" class="bulkbar">
           <span class="bulkbar__count">{{ library.selection.size }} selected</span>
+          <button class="bulkbar__all" @click="toggleSelectPage">{{ pageAllSelected ? 'None' : 'All' }}</button>
           <span class="bulkbar__rule" />
-          <button class="bulkbar__act" :disabled="!library.selection.size" @click="bulk('read')"><QIcon name="check" :size="15" /> Read</button>
-          <button class="bulkbar__act" :disabled="!library.selection.size" @click="bulk('pin')"><QIcon name="star" :size="15" /> Pin</button>
-          <button class="bulkbar__act" :disabled="!library.selection.size" @click="bulk('archive')"><QIcon name="archive" :size="15" /> Archive</button>
-          <button class="bulkbar__act" :disabled="!library.selection.size" @click="bulk('group')"><QIcon name="sparkles" :size="15" /> Group</button>
-          <button class="bulkbar__act bulkbar__act--danger" :disabled="!library.selection.size" @click="bulk('delete')"><QIcon name="trash" :size="15" /> Delete</button>
+          <button class="bulkbar__act" title="Mark read" :disabled="!library.selection.size" @click="bulk('read')"><QIcon name="check" :size="15" /> <span class="bulkbar__label">Read</span></button>
+          <button class="bulkbar__act" title="Pin" :disabled="!library.selection.size" @click="bulk('pin')"><QIcon name="star" :size="15" /> <span class="bulkbar__label">Pin</span></button>
+          <button class="bulkbar__act" title="Archive" :disabled="!library.selection.size" @click="bulk('archive')"><QIcon name="archive" :size="15" /> <span class="bulkbar__label">Archive</span></button>
+          <button class="bulkbar__act" title="Group with AI" :disabled="!library.selection.size" @click="bulk('group')"><QIcon name="sparkles" :size="15" /> <span class="bulkbar__label">Group</span></button>
+          <button class="bulkbar__act bulkbar__act--danger" title="Delete" :disabled="!library.selection.size" @click="bulk('delete')"><QIcon name="trash" :size="15" /> <span class="bulkbar__label">Delete</span></button>
           <span class="bulkbar__rule" />
           <button class="bulkbar__done" @click="exitSelect">Done</button>
         </div>
@@ -92,10 +105,15 @@
     <CategoryEditor v-model:open="showCategory" :editing="editingCategory" @save="saveCategory" />
 
     <QModal v-model:open="showAdd" title="Add by URL" size="sm">
-      <div class="add-form">
-        <QField v-model="addUrl" label="URL" placeholder="https://…" type="url" />
+      <form class="add-form" @submit.prevent="addByUrl">
+        <QField v-model="addUrl" label="URL" placeholder="https://…" type="url" :error="addError" />
         <QField v-model="addTitle" label="Title (optional)" placeholder="Article title" />
-      </div>
+        <p class="add-form__hint">
+          This saves the link only. To capture the article text for summaries and the reader, open the page and
+          save it with the toolbar button.
+        </p>
+        <button type="submit" hidden />
+      </form>
       <template #footer>
         <QButton variant="ghost" @click="showAdd = false">Cancel</QButton>
         <QButton variant="primary" :disabled="!addUrl.trim()" @click="addByUrl">Add</QButton>
@@ -108,6 +126,10 @@
         <div class="usage__row"><span>Podcasts</span><strong>{{ usage.totals.podcasts }}</strong></div>
         <div class="usage__row"><span>Requests</span><strong>{{ usage.totals.requests }}</strong></div>
         <div class="usage__row"><span>Estimated cost</span><strong>${{ usage.totals.cost.toFixed(4) }}</strong></div>
+        <p v-if="usage.totals.unpriced" class="usage__note">
+          Excludes {{ usage.totals.unpriced }} {{ usage.totals.unpriced === 1 ? 'summary' : 'summaries' }} on models
+          without a known price.
+        </p>
       </div>
       <div v-if="usage.logs.length" class="activity">
         <p class="activity__title">Recent activity</p>
@@ -123,8 +145,11 @@
       </template>
     </QModal>
 
-    <QModal v-model:open="showConfirm" title="Delete article" size="sm">
-      <p class="confirm">This article and its summaries, podcast and highlights will be permanently removed.</p>
+    <QModal v-model:open="showConfirm" :title="confirmIds.length > 1 ? `Delete ${confirmIds.length} articles` : 'Delete article'" size="sm">
+      <p class="confirm">
+        {{ confirmIds.length > 1 ? 'These articles' : 'This article' }} and {{ confirmIds.length > 1 ? 'their' : 'its' }}
+        summaries, podcasts and highlights will be permanently removed.
+      </p>
       <template #footer>
         <QButton variant="ghost" @click="showConfirm = false">Cancel</QButton>
         <QButton variant="danger" @click="confirmDeleteArticle">Delete</QButton>
@@ -144,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useLibraryStore } from '@/stores/library'
 import { useUiStore } from '@/stores/ui'
 import { useAiUsageStore } from '@/stores/ai-usage'
@@ -170,8 +195,16 @@ const usage = useAiUsageStore()
 const reader = useReaderStore()
 useTheme()
 
-const viewMode = ref<'list' | 'grid'>('list')
+const VIEW_KEY = 'quest-view-mode'
+const viewMode = ref<'list' | 'grid'>(localStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'list')
+watch(viewMode, (mode) => localStorage.setItem(VIEW_KEY, mode))
 const selectMode = ref(false)
+const railOpen = ref(false)
+const contentEl = ref<HTMLElement | null>(null)
+watch(
+  () => library.page,
+  () => contentEl.value?.scrollTo({ top: 0 }),
+)
 const revealing = ref(true) // one-shot load-in; cleared so filtering stays instant
 
 const showSettings = ref(false)
@@ -183,10 +216,12 @@ const showConfirmCat = ref(false)
 
 const editingCategory = ref<Category | null>(null)
 const confirmCategory = ref<Category | null>(null)
-const confirmArticleId = ref<string | null>(null)
+const confirmIds = ref<string[]>([])
 
 const addUrl = ref('')
 const addTitle = ref('')
+const addError = ref('')
+watch(addUrl, () => (addError.value = ''))
 
 const viewTitle = computed(() => {
   switch (library.view) {
@@ -212,10 +247,24 @@ const viewTitle = computed(() => {
 const emptyMessage = computed(() => {
   if (library.search) return 'Nothing matches your search.'
   if (library.view === 'unread') return 'All caught up — no unread articles.'
+  if (library.view === 'reading') return 'Nothing in progress. Open an article to start reading.'
   if (library.view === 'favorites') return 'Star an article to keep it close.'
   if (library.view === 'archived') return 'The archive is empty.'
+  if (library.view === 'category') return 'No articles on this shelf yet.'
+  if (library.view === 'tag') return 'No articles with this tag.'
+  if (library.articles.length) return 'Nothing to show here.'
   return 'Save your first article from the toolbar popup.'
 })
+
+const pageAllSelected = computed(
+  () => library.paged.length > 0 && library.paged.every((a) => library.selection.has(a.id)),
+)
+
+function toggleSelectPage(): void {
+  const ids = library.paged.map((a) => a.id)
+  if (pageAllSelected.value) library.deselectMany(ids)
+  else library.selectMany(ids)
+}
 
 async function openInReader(article: Article): Promise<void> {
   if (article.status === 'unread') await library.setStatus(article.id, 'reading')
@@ -264,13 +313,22 @@ async function bulk(action: 'read' | 'pin' | 'archive' | 'delete' | 'group'): Pr
     return
   }
 
+  if (action === 'delete') {
+    confirmIds.value = ids
+    showConfirm.value = true
+    return
+  }
+
+  const pinned = new Set(library.articles.filter((a) => a.isPinned).map((a) => a.id))
+  const pin = !ids.every((id) => pinned.has(id))
   for (const id of ids) {
     if (action === 'read') await library.setStatus(id, 'read')
-    else if (action === 'pin') await library.togglePin(id)
+    else if (action === 'pin') await library.patchArticle(id, { isPinned: pin })
     else if (action === 'archive') await library.patchArticle(id, { status: 'archived' })
-    else if (action === 'delete') await library.remove(id)
   }
-  ui.success(`${action} applied to ${ids.length} ${ids.length === 1 ? 'entry' : 'entries'}`)
+  const n = `${ids.length} ${ids.length === 1 ? 'entry' : 'entries'}`
+  const done = { read: `Marked ${n} as read`, pin: `${pin ? 'Pinned' : 'Unpinned'} ${n}`, archive: `Archived ${n}` }
+  ui.success(done[action])
   exitSelect()
 }
 
@@ -285,15 +343,27 @@ async function handleAction(article: Article, type: EntryAction): Promise<void> 
       await library.patchArticle(article.id, { status: article.status === 'archived' ? 'unread' : 'archived' })
       return
     case 'delete':
-      confirmArticleId.value = article.id
+      confirmIds.value = [article.id]
       showConfirm.value = true
       return
+  }
+}
+
+function isWebUrl(value: string): boolean {
+  try {
+    return ['http:', 'https:'].includes(new URL(value).protocol)
+  } catch {
+    return false
   }
 }
 
 async function addByUrl(): Promise<void> {
   const url = addUrl.value.trim()
   if (!url) return
+  if (!isWebUrl(url)) {
+    addError.value = 'Enter a full web address starting with https:// or http://'
+    return
+  }
   try {
     await library.addArticle({
       url: { actual: url, clean: normalizeUrl(url) },
@@ -343,11 +413,13 @@ async function confirmDeleteCategory(): Promise<void> {
 }
 
 async function confirmDeleteArticle(): Promise<void> {
-  if (!confirmArticleId.value) return
-  await library.remove(confirmArticleId.value)
-  ui.success('Article deleted')
+  const ids = confirmIds.value
+  if (!ids.length) return
+  for (const id of ids) await library.remove(id)
+  ui.success(ids.length === 1 ? 'Article deleted' : `Deleted ${ids.length} articles`)
   showConfirm.value = false
-  confirmArticleId.value = null
+  confirmIds.value = []
+  if (selectMode.value) exitSelect()
 }
 
 async function openUsage(): Promise<void> {
@@ -373,11 +445,20 @@ function onKeydown(e: KeyboardEvent): void {
   }
 }
 
+async function handleDeepLink(): Promise<void> {
+  const params = new URLSearchParams(location.search)
+  const articleId = params.get('article')
+  if (params.get('settings')) showSettings.value = true
+  if (articleId) await openArticleById(articleId)
+  if (location.search) history.replaceState(null, '', location.pathname)
+}
+
 onMounted(async () => {
   await library.load()
   await seedDefaultCategories()
   window.addEventListener('keydown', onKeydown)
   window.setTimeout(() => (revealing.value = false), 1500)
+  await handleDeepLink()
 })
 
 onBeforeUnmount(() => {
@@ -575,6 +656,20 @@ body {
   border-radius: var(--radius-full);
   cursor: pointer;
 }
+.bulkbar__all {
+  border: 0;
+  background: none;
+  padding: 0.2rem 0.3rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--accent);
+  cursor: pointer;
+}
+.bulkbar__all:hover {
+  text-decoration: underline;
+}
 .bulkbar-enter-active,
 .bulkbar-leave-active {
   transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
@@ -625,6 +720,11 @@ body {
   flex-direction: column;
   gap: var(--space-4);
 }
+.add-form__hint {
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--ink-faint);
+}
 .usage {
   display: flex;
   flex-direction: column;
@@ -642,6 +742,10 @@ body {
 }
 .usage__row strong {
   font-family: var(--font-mono);
+}
+.usage__note {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
 }
 .activity {
   margin-top: var(--space-5);
@@ -679,5 +783,50 @@ body {
 .confirm {
   color: var(--ink-muted);
   line-height: var(--leading-normal);
+}
+
+.rail-scrim {
+  display: none;
+}
+@media (max-width: 900px) {
+  .rail-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-overlay) - 1);
+    background: var(--paper-overlay);
+  }
+}
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--dur) var(--ease-out);
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+@media (max-width: 640px) {
+  .content {
+    padding: var(--space-4) var(--space-3);
+  }
+  .page-head__title {
+    font-size: var(--text-xl);
+  }
+  .toolbar {
+    justify-content: flex-start;
+  }
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-3);
+  }
+  .bulkbar {
+    max-width: calc(100vw - 1rem);
+    bottom: var(--space-3);
+    overflow-x: auto;
+  }
+  .bulkbar__label {
+    display: none;
+  }
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <aside class="rail">
+  <aside class="rail" :class="{ 'is-open': open }">
     <nav class="section">
       <p class="section__label">Contents</p>
       <button
@@ -7,7 +7,7 @@
         :key="item.view"
         class="row"
         :class="{ 'row--active': library.view === item.view }"
-        @click="library.setView(item.view)"
+        @click="go(item.view)"
       >
         <span class="row__name">{{ item.label }}</span>
         <span class="row__count">{{ item.count }}</span>
@@ -25,7 +25,10 @@
         :key="c.id"
         class="row row--shelf"
         :class="{ 'row--active': library.view === 'category' && library.activeKey === c.id }"
-        @click="library.setView('category', c.id)"
+        role="button"
+        tabindex="0"
+        @click="go('category', c.id)"
+        @keydown.enter.self="go('category', c.id)"
       >
         <span class="swatch" :style="{ background: c.color }" />
         <span class="row__name">{{ c.name }}</span>
@@ -45,7 +48,7 @@
           :key="t.name"
           class="chip"
           :class="{ 'chip--active': library.view === 'tag' && library.activeKey === t.name }"
-          @click="library.setView('tag', t.name)"
+          @click="go('tag', t.name)"
         >
           {{ t.name }}
         </button>
@@ -63,11 +66,19 @@ import type { LibraryView } from '@/stores/library'
 
 const library = useLibraryStore()
 
+defineProps<{ open?: boolean }>()
+
 const emit = defineEmits<{
+  (e: 'navigate'): void
   (e: 'new-category'): void
   (e: 'edit-category', category: Category): void
   (e: 'delete-category', category: Category): void
 }>()
+
+function go(view: LibraryView, key = ''): void {
+  library.setView(view, key)
+  emit('navigate')
+}
 
 const views = computed<{ view: LibraryView; label: string; count: number }[]>(() => [
   { view: 'all', label: 'All', count: library.stats.total },
@@ -157,10 +168,12 @@ const views = computed<{ view: LibraryView; label: string; count: number }[]>(()
   display: none;
   gap: 0.2rem;
 }
-.row--shelf:hover .row__tools {
+.row--shelf:hover .row__tools,
+.row--shelf:focus-within .row__tools {
   display: flex;
 }
-.row--shelf:hover .row__count {
+.row--shelf:hover .row__count,
+.row--shelf:focus-within .row__count {
   display: none;
 }
 .row__tools button {
@@ -210,5 +223,36 @@ const views = computed<{ view: LibraryView; label: string; count: number }[]>(()
 }
 .chip__n {
   color: var(--ink-faint);
+}
+@media (hover: none) {
+  .row--shelf .row__tools {
+    display: flex;
+  }
+  .row--shelf .row__count {
+    display: none;
+  }
+}
+
+/* Narrow windows: the rail becomes a drawer opened from the header. */
+@media (max-width: 900px) {
+  .rail {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--z-overlay);
+    width: min(280px, 85vw);
+    background-color: var(--paper);
+    background-image: var(--grain);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition: transform var(--dur) var(--ease-out), visibility 0s linear var(--dur);
+  }
+  .rail.is-open {
+    transform: none;
+    visibility: visible;
+    transition: transform var(--dur) var(--ease-out);
+  }
 }
 </style>

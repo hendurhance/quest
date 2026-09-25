@@ -203,10 +203,6 @@ const ContentExtractor = {
   },
 }
 
-// Revisiting a saved page re-renders your highlights and surfaces the summary.
-// Highlights are re-anchored by text match (the stored block offsets describe
-// our extracted copy, not this live DOM).
-
 void initAnnotations()
 
 async function initAnnotations(): Promise<void> {
@@ -287,16 +283,30 @@ function mountPanel(count: number, summary: string | null): void {
         : 'Saved to Quest'
   const summaryHtml = summary ? markdownToHtml(summary) : ''
   panel.innerHTML = `
-    <button id="quest-pill" type="button">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 3a2 2 0 0 0-2 2v16l8-5 8 5V5a2 2 0 0 0-2-2z"/></svg>
-      <span>${label}</span>
-    </button>
+    <div id="quest-bar">
+      <button id="quest-pill" type="button" aria-expanded="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 3a2 2 0 0 0-2 2v16l8-5 8 5V5a2 2 0 0 0-2-2z"/></svg>
+        <span>${label}</span>
+      </button>
+      <button id="quest-dismiss" type="button" aria-label="Hide Quest on this page" title="Hide">×</button>
+    </div>
     ${summary ? `<div id="quest-body"><div id="quest-summary">${summaryHtml}</div></div>` : ''}
   `
   document.body.appendChild(panel)
-  if (summary) {
-    panel.querySelector('#quest-pill')?.addEventListener('click', () => panel.classList.toggle('is-open'))
+  const pill = panel.querySelector<HTMLButtonElement>('#quest-pill')
+  const setOpen = (open: boolean) => {
+    panel.classList.toggle('is-open', open)
+    pill?.setAttribute('aria-expanded', String(open))
   }
+  if (summary) pill?.addEventListener('click', () => setOpen(!panel.classList.contains('is-open')))
+  const onKeydown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && panel.classList.contains('is-open')) setOpen(false)
+  }
+  document.addEventListener('keydown', onKeydown)
+  panel.querySelector('#quest-dismiss')?.addEventListener('click', () => {
+    document.removeEventListener('keydown', onKeydown)
+    panel.remove()
+  })
 }
 
 function injectAnnotationStyles(): void {
@@ -305,9 +315,12 @@ function injectAnnotationStyles(): void {
   style.id = 'quest-styles'
   style.textContent = `
     mark.quest-hl { background: rgba(240,210,123,0.5); color: inherit; border-radius: 2px; padding: 0 1px; }
-    #quest-panel { position: fixed; bottom: 18px; right: 18px; z-index: 2147483646; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    #quest-panel { position: fixed; bottom: 18px; right: 18px; z-index: 2147483646; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 8px; max-width: calc(100vw - 36px); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    #quest-bar { display: flex; align-items: center; gap: 4px; }
+    #quest-dismiss { width: 26px; height: 26px; border: 0; border-radius: 999px; background: rgba(33,30,26,0.72); color: #faf6ee; font-size: 16px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity 120ms; }
+    #quest-panel:hover #quest-dismiss, #quest-dismiss:focus-visible { opacity: 1; }
     #quest-pill { display: inline-flex; align-items: center; gap: 7px; background: #15604f; color: #faf6ee; border: 0; border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.18); }
-    #quest-body { display: none; margin-top: 8px; width: 340px; max-height: 50vh; overflow-y: auto; background: #fffdf8; color: #211e1a; border: 1px solid #e3dccd; border-radius: 12px; padding: 16px 18px; box-shadow: 0 16px 48px -12px rgba(0,0,0,0.28); }
+    #quest-body { display: none; width: 340px; max-width: 100%; max-height: 50vh; overflow-y: auto; background: #fffdf8; color: #211e1a; border: 1px solid #e3dccd; border-radius: 12px; padding: 16px 18px; box-shadow: 0 16px 48px -12px rgba(0,0,0,0.28); }
     #quest-panel.is-open #quest-body { display: block; }
     #quest-summary { font-size: 14px; line-height: 1.6; }
     #quest-summary p { margin: 0 0 10px; }

@@ -55,16 +55,21 @@ There is no separate dashboard window — AI usage is a panel inside the Library
 1. Click the Quest icon. The popup shows the page title, domain + favicon, and an
    estimated reading time (word count ÷ 200).
 2. Optionally:
-   - **Tags** — type and press Enter or comma; suggestions come from your most
-     used tags. Backspace removes the last tag.
+   - **Tags** — type and press Enter or comma, or paste a comma-separated list;
+     suggestions come from your most used tags. Tags sit on one row that scrolls
+     sideways. Backspace removes the last tag, and a tag you typed but didn't
+     commit is still added when you save.
    - **Shelf** — pick a category (or leave Uncategorized).
    - **AI summary on save** — generate a concise summary in the background.
    - **Generate podcast** — also produce a spoken version.
-   - **Close tab after saving** — on by default.
-3. Click **Save to Quest**. You'll see a confirmation and an *Open library*
-   button; the footer shows your totals and three most recent saves.
+   - **Close tab after saving** — on by default; Quest remembers your choice.
+3. Click **Save to Quest**, or press `⌘↵` / `Ctrl+Enter`. You'll see a
+   confirmation and an *Open in Quest* button that opens the article in the
+   Reader; the footer shows your totals and three most recent saves.
 
-The AI toggles default to your **Automation** settings. Quest extracts the
+The AI toggles default to your **Automation** settings. Until AI is set up
+(a key plus a chosen model), they're disabled with a *Set up* link to Settings.
+Browser pages such as `chrome://` and the new-tab page can't be saved. Quest extracts the
 article body when saving (it asks the page's content script first, then falls
 back to injecting a one-off extractor, keeping whichever yields more text).
 
@@ -132,12 +137,12 @@ Long lists paginate (24 per page).
 Click **Select**, tick the cards you want, and use the floating bar at the bottom:
 
 - **Read** — mark read
-- **Pin** — toggle favorite
+- **Pin** — pin all selected (or unpin, if they're all pinned already)
 - **Archive**
 - **Group** — let AI assign a shelf and tags to each
-- **Delete**
+- **Delete** — asks for confirmation first
 
-**Done** exits selection mode.
+**All** selects every entry on the page. **Done** exits selection mode.
 
 ---
 
@@ -149,8 +154,11 @@ Clicking an article opens Quest's built-in Reader (opening an unread article
 moves it to **Reading**). It's a full-screen, two-column view:
 
 - A top **progress bar** tracks and saves how far you've scrolled.
-- The header has **‹ Library**, the read status, and an **Original ↗** link to
-  the source page.
+- The header has **‹ Library**, the read status, an **Original ↗** link to the
+  source page, and a **Distill** button that shows or hides the rail. In narrow
+  windows the rail slides over the article instead of squeezing it.
+- Reopening an article you're partway through resumes where you left off.
+  **Esc** returns to the Library.
 - The article renders in an editorial serif layout with a drop-cap lead
   paragraph. If no body text was captured, you'll be pointed to the original.
 
@@ -162,6 +170,9 @@ On the right is the **Distill** rail:
   duration with an audio player.
 - **Highlights** — every highlight on the article, each with an optional note and
   a *Remove* action.
+
+If generating fails, the reason shows in the card. When the fix is in Settings
+(missing key, model, or voice), the card links straight there.
 
 Each card collapses from its header, so you can keep just what you're using open.
 
@@ -226,28 +237,29 @@ directly from your browser to the provider.
 
 ### Providers, models & voices
 
-**Summaries**
+- **Summaries** — OpenAI or Google Gemini.
+- **Podcasts (text-to-speech)** — Google Gemini TTS (30 built-in voices) or
+  ElevenLabs (the voices in your ElevenLabs account).
 
-- **OpenAI** — GPT-5 Nano, GPT-5 Mini, GPT-5, GPT-4.1 Nano, GPT-4.1 Mini, GPT-4.1
-- **Google Gemini** — Gemini 2.5 Flash-Lite, Gemini 2.5 Flash, Gemini 2.5 Pro
-  *(Gemini 2.5 Flash is the default)*
-
-**Podcasts (text-to-speech)**
-
-- **Google Gemini TTS** — Gemini 2.5 Flash TTS, Gemini 2.5 Pro TTS (30 voices)
-  *(default)*
-- **ElevenLabs** — Flash v2.5, Turbo v2.5, Multilingual v2, v3 (8 voices)
+Quest doesn't ship a fixed model list. Settings asks each provider's API for the
+models your key can use, so new models appear and retired ones drop off without
+a Quest update. If a model you picked is retired, Settings marks it
+*unavailable*, and generating tells you to choose another. If the list can't be
+loaded (for example, a key without permission to list models), you can type a
+model ID instead.
 
 ### Setup
 
 1. Get a key from your provider:
-   [OpenAI](https://platform.openai.com/), [Google Gemini](https://ai.google.dev/)
-   (free tier available), or [ElevenLabs](https://elevenlabs.io/).
+   [OpenAI](https://platform.openai.com/api-keys),
+   [Google Gemini](https://aistudio.google.com/apikey) (free tier available), or
+   [ElevenLabs](https://elevenlabs.io/app/settings/api-keys).
 2. Open **Settings**.
-   - Under **AI Summaries**, choose a provider and model.
-   - Under **Podcasts**, choose a voice provider and voice.
-   - Under **API Keys**, paste the key. Quest only shows the keys for the
-     providers you've selected. Click **Test** to verify, then **Save settings**.
+   - Under **Summaries**, choose a provider and paste its key. The model list
+     loads once Quest has a key; pick a model.
+   - Under **Podcasts**, choose a voice provider (paste its key if it differs),
+     then a voice model and a voice.
+   - Click **Test** to verify a key, then **Save settings**.
 
 Keys are encrypted on your device and never synced.
 
@@ -285,7 +297,9 @@ It prefers an existing shelf when one fits and otherwise proposes a short new on
 
 The **AI usage** panel (chart icon in the header) shows totals — summaries,
 podcasts, requests, and estimated cost — plus a recent-activity log with the
-operation, provider, time, and success/failure.
+operation, provider, time, and success/failure. Cost is estimated only for
+models with a known price; summaries on other models are counted and noted as
+unpriced rather than guessed.
 
 ---
 
@@ -294,9 +308,10 @@ operation, provider, time, and success/failure.
 Open from the gear icon in the Library header.
 
 - **Appearance** — theme: **Paper** (light) or **Ink** (dark).
-- **AI Summaries** — summary provider and model.
-- **Podcasts** — voice provider and voice.
-- **API Keys** — only the providers you're using; paste, **Test**, save. Keys are
+- **Summaries** — provider, its API key, and model.
+- **Podcasts** — voice provider, its API key (shared if it's the same provider
+  as Summaries), voice model, and voice.
+- **API keys** — paste, **Test**, save. **Remove** deletes a saved key. Keys are
   encrypted locally and never synced.
 - **Automation**
   - **Summarise on save** — generate a summary on every save.
@@ -311,9 +326,12 @@ Settings sync across your Chrome/Edge instances (API keys do not).
 
 ## Keyboard & Command Palette
 
-Quest is mouse-first, with one shortcut:
+Quest is mouse-first, with a few shortcuts:
 
 - **`⌘K` / `Ctrl+K`** — open the command palette.
+- **`/`** — jump to the Library search; **Esc** clears it.
+- **`⌘↵` / `Ctrl+Enter`** — save from the popup.
+- **Esc** in the Reader — back to the Library.
 
 In the palette, type to search your articles or filter commands (Add by URL, open
 Settings, AI usage, toggle theme, jump to a view). Navigate with **↑ / ↓**,

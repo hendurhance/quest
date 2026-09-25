@@ -150,6 +150,23 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   border-top: 1px solid var(--rule);
 }
 
+@media (max-width: 560px) {
+  .q-modal {
+    padding: var(--space-3);
+  }
+  .q-modal__dialog {
+    max-height: 92vh;
+  }
+  .q-modal__head,
+  .q-modal__body {
+    padding-inline: var(--space-4);
+  }
+  .q-modal__foot {
+    padding-inline: var(--space-4);
+    padding-bottom: var(--space-4);
+  }
+}
+
 .q-modal-enter-active,
 .q-modal-leave-active {
   transition: opacity var(--dur) var(--ease-out);

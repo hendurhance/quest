@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { db } from '@/core/db'
 import type { Article, ArticleStatus, Category, Tag, NewArticle } from '@/core/db'
 
@@ -124,6 +124,13 @@ export const useLibraryStore = defineStore('library', () => {
 
   const pageCount = computed(() => Math.max(1, Math.ceil(visible.value.length / pageSize.value)))
 
+  watch([search, sort], () => {
+    page.value = 1
+  })
+  watch(pageCount, (count) => {
+    if (page.value > count) page.value = count
+  })
+
   const paged = computed<Article[]>(() => {
     const start = (page.value - 1) * pageSize.value
     return visible.value.slice(start, start + pageSize.value)
@@ -165,6 +172,15 @@ export const useLibraryStore = defineStore('library', () => {
     if (next.has(id)) next.delete(id)
     else next.add(id)
     selection.value = next
+  }
+
+  function selectMany(ids: string[]): void {
+    selection.value = new Set([...selection.value, ...ids])
+  }
+
+  function deselectMany(ids: string[]): void {
+    const drop = new Set(ids)
+    selection.value = new Set([...selection.value].filter((id) => !drop.has(id)))
   }
 
   function clearSelection(): void {
@@ -260,6 +276,8 @@ export const useLibraryStore = defineStore('library', () => {
     setView,
     goToPage,
     toggleSelect,
+    selectMany,
+    deselectMany,
     clearSelection,
     addArticle,
     patchArticle,

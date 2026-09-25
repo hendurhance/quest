@@ -7,6 +7,7 @@ export interface UsageTotals {
   summaries: number
   podcasts: number
   cost: number
+  unpriced: number
   requests: number
 }
 
@@ -28,16 +29,18 @@ export const useAiUsageStore = defineStore('aiUsage', () => {
     let summaries = 0
     let podcasts = 0
     let cost = 0
+    let unpriced = 0
     let requests = 0
     for (const log of logs.value) {
       if (!log.success) continue
       requests++
       const estimated = log.details?.estimatedCost
       if (typeof estimated === 'number') cost += estimated
+      else if (log.action === 'generate_summary') unpriced++
       if (log.action === 'generate_summary') summaries++
       if (log.action === 'generate_podcast') podcasts++
     }
-    return { summaries, podcasts, cost, requests }
+    return { summaries, podcasts, cost, unpriced, requests }
   })
 
   return { logs, isLoading, load, totals }

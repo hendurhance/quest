@@ -5,6 +5,7 @@
     :aria-checked="modelValue"
     class="q-switch"
     :class="{ 'q-switch--on': modelValue }"
+    :disabled="disabled"
     @click="emit('update:modelValue', !modelValue)"
   >
     <span class="q-switch__knob" aria-hidden="true" />
@@ -12,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{ modelValue: boolean }>()
+defineProps<{ modelValue: boolean; disabled?: boolean }>()
 const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void }>()
 </script>
 
@@ -28,6 +29,10 @@ const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void }>()
   background: var(--paper-sunken);
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.q-switch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .q-switch--on {
   background: var(--accent);
