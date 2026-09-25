@@ -5,9 +5,20 @@
     <header class="reader__bar">
       <button class="back" @click="close"><QIcon name="chevron-left" :size="16" /> Library</button>
       <span class="reader__status">{{ statusLabel }}</span>
-      <a class="orig" :href="article.url.actual" target="_blank" rel="noopener">
-        Original <QIcon name="external-link" :size="13" />
-      </a>
+      <div class="reader__tools">
+        <a class="orig" :href="article.url.actual" target="_blank" rel="noopener">
+          Original <QIcon name="external-link" :size="13" />
+        </a>
+        <button
+          class="rail-toggle"
+          :class="{ on: railOpen }"
+          :aria-pressed="railOpen"
+          title="Summary, podcast and highlights"
+          @click="toggleRail"
+        >
+          <QIcon name="panel-right" :size="15" /> Distill
+        </button>
+      </div>
     </header>
 
     <div class="reader__cols">
@@ -36,7 +47,8 @@
         </div>
       </article>
 
-      <aside class="rail">
+      <Transition name="rail">
+      <aside v-show="railOpen" class="rail">
         <p class="rail__label">Distill</p>
 
         <section class="card" :class="{ 'card--collapsed': !summaryOpen }">
@@ -57,7 +69,12 @@
               </div>
               <div class="summary-text" v-html="renderedSummary" />
             </template>
-            <p v-else-if="!summaryBusy" class="card__empty">No summary yet.</p>
+            <p v-else-if="summaryBusy" class="card__empty">Writing a summary…</p>
+            <p v-else-if="!summaryError" class="card__empty">No summary yet.</p>
+            <p v-if="summaryError" class="card__error">
+              {{ summaryError.text }}
+              <button v-if="summaryError.inSettings" type="button" class="card__link" @click="emit('settings')">Open settings</button>
+            </p>
           </div>
         </section>
 
@@ -80,7 +97,12 @@
               </div>
               <QAudioPlayer :src="reader.audioUrl" />
             </template>
-            <p v-else-if="!podcastBusy" class="card__empty">No podcast yet.</p>
+            <p v-else-if="podcastBusy" class="card__empty">Recording. This can take a minute…</p>
+            <p v-else-if="!podcastError" class="card__empty">No podcast yet.</p>
+            <p v-if="podcastError" class="card__error">
+              {{ podcastError.text }}
+              <button v-if="podcastError.inSettings" type="button" class="card__link" @click="emit('settings')">Open settings</button>
+            </p>
           </div>
         </section>
 
@@ -108,6 +130,7 @@
           </div>
         </section>
       </aside>
+      </Transition>
     </div>
 
     <div v-if="selection" class="sel" :style="{ left: `${selection.x}px`, top: `${selection.y}px` }">
@@ -117,10 +140,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useReaderStore } from '@/stores/reader'
 import { useUiStore } from '@/stores/ui'
 import { summarizeArticle, generatePodcast } from '@/core/ai'
+import { SettingsError } from '@/core/ai/providers/errors'
 import { applyHighlights } from '@/core/reader/highlight-render'
 import { markdownToHtml } from '@/core/markdown'
 import { formatTime } from '@/core/format'
@@ -128,7 +152,7 @@ import { QButton, QTag, QIcon, QAudioPlayer } from '@/design/primitives'
 
 const reader = useReaderStore()
 const ui = useUiStore()
-const emit = defineEmits<{ (e: 'close'): void }>()
+const emit = defineEmits<{ (e: 'close'): void; (e: 'settings'): void }>()
 
 const bodyEl = ref<HTMLElement | null>(null)
 const summaryBusy = ref(false)
@@ -136,6 +160,20 @@ const podcastBusy = ref(false)
 const summaryOpen = ref(true)
 const podcastOpen = ref(true)
 const highlightsOpen = ref(true)
+interface CardError {
+  text: string
+  inSettings: boolean
+}
+const summaryError = ref<CardError | null>(null)
+const podcastError = ref<CardError | null>(null)
+
+const RAIL_KEY = 'quest-reader-rail'
+const narrow = window.matchMedia('(max-width: 1000px)')
+const railOpen = ref(!narrow.matches && localStorage.getItem(RAIL_KEY) !== 'closed')
+function toggleRail(): void {
+  railOpen.value = !railOpen.value
+  if (!narrow.matches) localStorage.setItem(RAIL_KEY, railOpen.value ? 'open' : 'closed')
+}
 const selection = ref<{ x: number; y: number } | null>(null)
 let pending: { blockIndex: number; start: number; end: number; text: string } | null = null
 let lastPersist = 0
@@ -226,19 +264,24 @@ function onNote(id: string, event: Event): void {
   reader.updateHighlightNote(id, (event.target as HTMLTextAreaElement).value)
 }
 
-function errMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong'
+function cardError(error: unknown): CardError {
+  return {
+    text: error instanceof Error ? error.message : 'Something went wrong',
+    inSettings: error instanceof SettingsError,
+  }
 }
 
 async function genSummary(): Promise<void> {
   if (!reader.article) return
   summaryBusy.value = true
+  summaryError.value = null
+  summaryOpen.value = true
   try {
     await summarizeArticle(reader.article.id)
     await reader.open(reader.article.id)
     ui.success('Summary ready')
   } catch (error) {
-    ui.error(errMessage(error))
+    summaryError.value = cardError(error)
   } finally {
     summaryBusy.value = false
   }
@@ -247,17 +290,44 @@ async function genSummary(): Promise<void> {
 async function genPodcast(): Promise<void> {
   if (!reader.article) return
   podcastBusy.value = true
+  podcastError.value = null
+  podcastOpen.value = true
   try {
-    ui.info('Generating podcast — this can take a moment…')
     await generatePodcast(reader.article.id)
     await reader.open(reader.article.id)
     ui.success('Podcast ready')
   } catch (error) {
-    ui.error(errMessage(error))
+    podcastError.value = cardError(error)
   } finally {
     podcastBusy.value = false
   }
 }
+
+function onKeydown(e: KeyboardEvent): void {
+  if (e.key !== 'Escape' || e.defaultPrevented) return
+  const target = e.target as HTMLElement | null
+
+  if (document.querySelector('[role="dialog"]') || target?.closest('input, textarea, select')) return
+  if (selection.value) {
+    selection.value = null
+    window.getSelection()?.removeAllRanges()
+  } else if (railOpen.value && narrow.matches) {
+    railOpen.value = false
+  } else {
+    void close()
+  }
+}
+
+onMounted(async () => {
+  window.addEventListener('keydown', onKeydown)
+
+  await nextTick()
+  const el = bodyEl.value
+  const p = reader.article?.readingProgress ?? 0
+  if (el && p > 0.02 && p < 0.98) el.scrollTop = p * (el.scrollHeight - el.clientHeight)
+})
+
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 async function close(): Promise<void> {
   const el = bodyEl.value
@@ -315,6 +385,31 @@ async function close(): Promise<void> {
   letter-spacing: var(--tracking-wide);
   color: var(--ink-faint);
 }
+.reader__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.rail-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--rule);
+  background: var(--paper-raised);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.6rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.rail-toggle:hover,
+.rail-toggle.on {
+  color: var(--accent);
+  border-color: var(--accent);
+}
 .orig {
   display: inline-flex;
   align-items: center;
@@ -323,6 +418,7 @@ async function close(): Promise<void> {
   font-size: var(--text-2xs);
 }
 .reader__cols {
+  position: relative;
   flex: 1;
   display: flex;
   min-height: 0;
@@ -464,6 +560,22 @@ async function close(): Promise<void> {
   color: var(--ink-faint);
   font-style: italic;
 }
+.card__error {
+  margin-top: 0.4rem;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--critical);
+}
+.card__link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
 .summary-text {
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
@@ -566,5 +678,48 @@ async function close(): Promise<void> {
 }
 .dot {
   color: var(--ink-faint);
+}
+
+.rail-enter-active,
+.rail-leave-active {
+  transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
+}
+.rail-enter-from,
+.rail-leave-to {
+  opacity: 0;
+  transform: translateX(16px);
+}
+
+/* Narrow windows: the rail floats over the article instead of squeezing it. */
+@media (max-width: 1000px) {
+  .rail {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    width: min(360px, 92vw);
+    background-color: var(--paper);
+    background-image: var(--grain);
+    box-shadow: var(--shadow-lg);
+    animation: none;
+  }
+}
+@media (max-width: 640px) {
+  .reader__bar {
+    padding: var(--space-2) var(--space-3);
+  }
+  .reader__status {
+    display: none;
+  }
+  .reader__article {
+    padding: var(--space-5) var(--space-4) var(--space-10);
+  }
+  .title {
+    font-size: var(--text-2xl);
+  }
+  .prose {
+    font-size: var(--text-md);
+  }
 }
 </style>

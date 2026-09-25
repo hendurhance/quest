@@ -20,127 +20,134 @@
       </section>
 
       <section class="sec">
-        <h4 class="sec__label">AI Summaries</h4>
-        <div class="row">
+        <h4 class="sec__label">Summaries</h4>
+        <div class="row row--field">
           <div class="row__text"><span class="row__name">Provider</span></div>
-          <div class="control">
-            <select v-model="form.summaryProvider">
+          <div class="control select">
+            <select :value="form.summaryProvider" @change="setSummaryProvider">
               <option :value="OPENAI">OpenAI</option>
               <option :value="GEMINI">Gemini</option>
             </select>
           </div>
         </div>
-        <div class="row">
-          <div class="row__text"><span class="row__name">Model</span></div>
-          <div class="control">
-            <select v-if="form.summaryProvider === OPENAI" v-model="form.openaiModel">
-              <option v-for="m in OPENAI_MODELS" :key="m.id" :value="m.id">{{ m.name }}</option>
-            </select>
-            <select v-else v-model="form.geminiModel">
-              <option v-for="m in GEMINI_MODELS" :key="m.id" :value="m.id">{{ m.name }}</option>
-            </select>
+        <div class="row row--field">
+          <div class="row__text"><span class="row__name">API key</span></div>
+          <ApiKeyField
+            v-model="keyInput[form.summaryProvider]"
+            class="control"
+            :provider="form.summaryProvider"
+            :saved="keyState[form.summaryProvider]"
+            :testing="testing === form.summaryProvider"
+            @commit="refreshProvider(form.summaryProvider)"
+            @test="test(form.summaryProvider)"
+            @remove="removeKey(form.summaryProvider)"
+          />
+        </div>
+        <div class="row row--field">
+          <div class="row__text">
+            <span class="row__name">Model</span>
+            <span class="row__desc">Listed live from {{ providerName(form.summaryProvider) }}.</span>
           </div>
+          <CatalogSelect
+            v-model="summaryModel"
+            class="control"
+            placeholder="Choose a model…"
+            :state="list(`summary:${form.summaryProvider}`)"
+            @retry="loadSummaryModels"
+          />
         </div>
       </section>
 
       <section class="sec">
         <h4 class="sec__label">Podcasts</h4>
-        <div class="row">
+        <div class="row row--field">
           <div class="row__text"><span class="row__name">Voice provider</span></div>
-          <div class="control">
-            <select v-model="form.ttsProvider">
-              <option :value="GEMINI">Gemini TTS</option>
+          <div class="control select">
+            <select :value="form.ttsProvider" @change="setTtsProvider">
+              <option :value="GEMINI">Gemini</option>
               <option :value="ELEVENLABS">ElevenLabs</option>
             </select>
           </div>
         </div>
-        <div class="row">
+        <div class="row row--field">
+          <div class="row__text"><span class="row__name">API key</span></div>
+          <p v-if="form.ttsProvider === form.summaryProvider" class="control shared">
+            Uses your {{ providerName(form.ttsProvider) }} key above.
+          </p>
+          <ApiKeyField
+            v-else
+            v-model="keyInput[form.ttsProvider]"
+            class="control"
+            :provider="form.ttsProvider"
+            :saved="keyState[form.ttsProvider]"
+            :testing="testing === form.ttsProvider"
+            @commit="refreshProvider(form.ttsProvider)"
+            @test="test(form.ttsProvider)"
+            @remove="removeKey(form.ttsProvider)"
+          />
+        </div>
+        <div class="row row--field">
+          <div class="row__text"><span class="row__name">Model</span></div>
+          <CatalogSelect
+            v-model="ttsModel"
+            class="control"
+            placeholder="Choose a voice model…"
+            :state="list(`tts:${form.ttsProvider}`)"
+            @retry="loadTtsLists"
+          />
+        </div>
+        <div class="row row--field">
           <div class="row__text"><span class="row__name">Voice</span></div>
-          <div class="control">
-            <select v-if="form.ttsProvider === GEMINI" v-model="form.geminiTtsVoice">
-              <option v-for="v in GEMINI_VOICES" :key="v.id" :value="v.id">{{ v.name }}</option>
-            </select>
-            <select v-else v-model="form.elevenlabsVoiceId">
-              <option v-for="v in ELEVENLABS_VOICES" :key="v.id" :value="v.id">{{ v.name }}</option>
-            </select>
-          </div>
+          <CatalogSelect
+            v-model="voice"
+            class="control"
+            placeholder="Choose a voice…"
+            :state="list(`voice:${form.ttsProvider}`)"
+            @retry="loadTtsLists"
+          />
         </div>
-      </section>
-
-      <!-- API keys — only the providers currently in use -->
-      <section class="sec">
-        <h4 class="sec__label">API Keys</h4>
-        <div v-if="needOpenAI" class="field">
-          <div class="field__top">
-            <span class="field__name">OpenAI</span>
-            <span class="field__state" :class="{ 'is-set': keyState.openai }">{{ keyState.openai ? 'Saved' : 'Not set' }}</span>
-          </div>
-          <div class="field__row">
-            <input v-model="keyInput.openai" class="input" type="password" placeholder="sk-…" />
-            <QButton variant="secondary" size="sm" :disabled="!keyInput.openai" @click="test(OPENAI, keyInput.openai)">Test</QButton>
-          </div>
-        </div>
-        <div v-if="needGemini" class="field">
-          <div class="field__top">
-            <span class="field__name">Gemini</span>
-            <span class="field__state" :class="{ 'is-set': keyState.gemini }">{{ keyState.gemini ? 'Saved' : 'Not set' }}</span>
-          </div>
-          <div class="field__row">
-            <input v-model="keyInput.gemini" class="input" type="password" placeholder="AIza…" />
-            <QButton variant="secondary" size="sm" :disabled="!keyInput.gemini" @click="test(GEMINI, keyInput.gemini)">Test</QButton>
-          </div>
-        </div>
-        <div v-if="needElevenLabs" class="field">
-          <div class="field__top">
-            <span class="field__name">ElevenLabs</span>
-            <span class="field__state" :class="{ 'is-set': keyState.elevenlabs }">{{ keyState.elevenlabs ? 'Saved' : 'Not set' }}</span>
-          </div>
-          <div class="field__row">
-            <input v-model="keyInput.elevenlabs" class="input" type="password" placeholder="Your ElevenLabs key" />
-            <QButton variant="secondary" size="sm" :disabled="!keyInput.elevenlabs" @click="test(ELEVENLABS, keyInput.elevenlabs)">Test</QButton>
-          </div>
-        </div>
-        <p class="hint">Keys are encrypted on this device and never synced.</p>
       </section>
 
       <section class="sec">
         <h4 class="sec__label">Automation</h4>
-        <div class="row">
-          <div class="row__text">
+        <label class="row">
+          <span class="row__text">
             <span class="row__name">Summarise on save</span>
             <span class="row__desc">Generate a summary the moment you save.</span>
-          </div>
+          </span>
           <QSwitch v-model="form.autoSummary" />
-        </div>
-        <div class="row">
-          <div class="row__text">
+        </label>
+        <label class="row">
+          <span class="row__text">
             <span class="row__name">Podcast on save</span>
             <span class="row__desc">Also produce a spoken version.</span>
-          </div>
+          </span>
           <QSwitch v-model="form.autoPodcast" />
-        </div>
-        <div class="row">
-          <div class="row__text">
+        </label>
+        <label class="row">
+          <span class="row__text">
             <span class="row__name">AI grouping on save</span>
             <span class="row__desc">Let AI choose the shelf and tags.</span>
-          </div>
+          </span>
           <QSwitch v-model="form.autoGroup" />
-        </div>
-        <div class="row">
-          <div class="row__text">
+        </label>
+        <label class="row">
+          <span class="row__text">
             <span class="row__name">Auto-archive</span>
             <span class="row__desc">Tidy away read articles automatically.</span>
-          </div>
+          </span>
           <QSwitch v-model="form.autoArchive" />
-        </div>
+        </label>
         <div v-if="form.autoArchive" class="row">
           <div class="row__text"><span class="row__name">Archive after</span></div>
-          <div class="control control--num">
+          <div class="control--num">
             <input v-model.number="form.archiveDays" class="input input--num" type="number" min="1" />
             <span class="unit">days</span>
           </div>
         </div>
       </section>
+
+      <p class="hint">API keys are encrypted on this device and never synced.</p>
     </div>
 
     <template #footer>
@@ -151,18 +158,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import type { Settings } from '@/types'
-import { AIProvider } from '@/types'
+import { ref, reactive, computed, watch } from 'vue'
+import type { Settings, SummaryProvider, TTSProvider } from '@/types'
+import { AIProvider, getProviderDisplayName } from '@/types'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiStore } from '@/stores/ui'
 import { useTheme } from '@/composables/useTheme'
-import { hasApiKey, setApiKey } from '@/core/keys'
+import { getApiKey, hasApiKey, removeApiKey, setApiKey } from '@/core/keys'
 import { sendMessage } from '@/core/messaging/bus'
 import { defaultSettings } from '@/core/settings'
-import { OPENAI_MODELS, GEMINI_MODELS } from '@/core/ai/models'
-import { GEMINI_VOICES, ELEVENLABS_VOICES } from '@/core/ai/voices'
+import { listSummaryModels, listTtsModels, listVoices } from '@/core/ai/catalog'
+import type { Catalog } from '@/core/ai/catalog'
 import { QModal, QButton, QIcon, QSwitch } from '@/design/primitives'
+import CatalogSelect from './CatalogSelect.vue'
+import type { CatalogState } from './CatalogSelect.vue'
+import ApiKeyField from './ApiKeyField.vue'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ (e: 'update:open', value: boolean): void }>()
@@ -174,50 +184,148 @@ const { theme, setTheme } = useTheme()
 const OPENAI = AIProvider.OPENAI
 const GEMINI = AIProvider.GEMINI
 const ELEVENLABS = AIProvider.ELEVENLABS
+const providerName = getProviderDisplayName
 
+const emptyKeys = () => ({ [OPENAI]: '', [GEMINI]: '', [ELEVENLABS]: '' })
 const form = ref<Settings>(defaultSettings())
-const keyInput = ref({ openai: '', gemini: '', elevenlabs: '' })
-const keyState = ref({ openai: false, gemini: false, elevenlabs: false })
+const keyInput = reactive<Record<AIProvider, string>>(emptyKeys())
+const keyState = reactive<Record<AIProvider, boolean>>({ [OPENAI]: false, [GEMINI]: false, [ELEVENLABS]: false })
+const testing = ref<AIProvider | null>(null)
 const saving = ref(false)
 
-// Only surface the keys for providers actually selected.
-const needOpenAI = computed(() => form.value.summaryProvider === OPENAI)
-const needGemini = computed(() => form.value.summaryProvider === GEMINI || form.value.ttsProvider === GEMINI)
-const needElevenLabs = computed(() => form.value.ttsProvider === ELEVENLABS)
+const summaryModel = computed({
+  get: () => (form.value.summaryProvider === OPENAI ? form.value.openaiModel : form.value.geminiModel),
+  set: (id: string) => {
+    if (form.value.summaryProvider === OPENAI) form.value.openaiModel = id
+    else form.value.geminiModel = id
+  },
+})
+const ttsModel = computed({
+  get: () => (form.value.ttsProvider === ELEVENLABS ? form.value.elevenlabsModel : form.value.geminiTtsModel ?? ''),
+  set: (id: string) => {
+    if (form.value.ttsProvider === ELEVENLABS) form.value.elevenlabsModel = id
+    else form.value.geminiTtsModel = id
+  },
+})
+const voice = computed({
+  get: () => (form.value.ttsProvider === ELEVENLABS ? form.value.elevenlabsVoiceId : form.value.geminiTtsVoice),
+  set: (id: string) => {
+    if (form.value.ttsProvider === ELEVENLABS) form.value.elevenlabsVoiceId = id
+    else form.value.geminiTtsVoice = id
+  },
+})
+
+const IDLE: CatalogState = { status: 'idle', items: [], available: [] }
+const lists = reactive<Record<string, CatalogState>>({})
+const requestSeq: Record<string, number> = {}
+
+function list(key: string): CatalogState {
+  return lists[key] ?? IDLE
+}
+
+async function keyFor(provider: AIProvider): Promise<string | null> {
+  const typed = keyInput[provider].trim()
+  if (typed) return typed
+  return keyState[provider] ? getApiKey(provider) : null
+}
+
+async function load(key: string, fetchCatalog: (apiKey: string) => Promise<Catalog>, provider?: AIProvider) {
+  const seq = (requestSeq[key] = (requestSeq[key] ?? 0) + 1)
+  const isLatest = () => requestSeq[key] === seq
+  const apiKey = provider ? await keyFor(provider) : ''
+  if (!isLatest()) return
+  if (apiKey === null) {
+    lists[key] = IDLE
+    return
+  }
+  lists[key] = { ...list(key), status: 'loading' }
+  try {
+    const catalog = await fetchCatalog(apiKey)
+    if (isLatest()) lists[key] = { status: 'ready', ...catalog }
+  } catch (error) {
+    if (isLatest()) {
+      lists[key] = { ...IDLE, status: 'error', error: error instanceof Error ? error.message : 'unknown error' }
+    }
+  }
+}
+
+function loadSummaryModels(): void {
+  const p = form.value.summaryProvider
+  const id = p === OPENAI ? 'openai' : 'gemini'
+  void load(`summary:${p}`, (k) => listSummaryModels(id, k), p)
+}
+
+function loadTtsLists(): void {
+  const p = form.value.ttsProvider
+  const id = p === ELEVENLABS ? 'elevenlabs' : 'gemini'
+  void load(`tts:${p}`, (k) => listTtsModels(id, k), p)
+  void load(`voice:${p}`, (k) => listVoices(id, k), p === ELEVENLABS ? p : undefined)
+}
+
+function refreshProvider(provider: AIProvider): void {
+  if (form.value.summaryProvider === provider) loadSummaryModels()
+  if (form.value.ttsProvider === provider) loadTtsLists()
+}
+
+function setSummaryProvider(event: Event): void {
+  form.value.summaryProvider = (event.target as HTMLSelectElement).value as SummaryProvider
+  loadSummaryModels()
+}
+
+function setTtsProvider(event: Event): void {
+  form.value.ttsProvider = (event.target as HTMLSelectElement).value as TTSProvider
+  loadTtsLists()
+}
 
 watch(
   () => props.open,
   async (open) => {
     if (!open) return
     await settings.load()
+    Object.assign(keyInput, emptyKeys())
+    const [openai, gemini, elevenlabs] = await Promise.all([hasApiKey(OPENAI), hasApiKey(GEMINI), hasApiKey(ELEVENLABS)])
+    Object.assign(keyState, { [OPENAI]: openai, [GEMINI]: gemini, [ELEVENLABS]: elevenlabs })
     form.value = { ...defaultSettings(), ...(settings.settings ?? {}) }
-    keyInput.value = { openai: '', gemini: '', elevenlabs: '' }
-    keyState.value = {
-      openai: await hasApiKey(AIProvider.OPENAI),
-      gemini: await hasApiKey(AIProvider.GEMINI),
-      elevenlabs: await hasApiKey(AIProvider.ELEVENLABS),
-    }
+    loadSummaryModels()
+    loadTtsLists()
   },
 )
 
-async function test(provider: AIProvider, key: string): Promise<void> {
-  if (!key) return
+async function test(provider: AIProvider): Promise<void> {
+  const apiKey = await keyFor(provider)
+  if (!apiKey) return
+  testing.value = provider
   try {
-    const res = await sendMessage({ action: 'testApiKey', provider, apiKey: key })
-    if (res.success) ui.success('API key works')
-    else ui.error(res.error || 'API key test failed')
+    const res = await sendMessage({ action: 'testApiKey', provider, apiKey })
+    if (res.success) {
+      ui.success(`${providerName(provider)} key works`)
+      refreshProvider(provider)
+    } else {
+      ui.error(res.error || 'API key test failed')
+    }
   } catch {
     ui.error('Could not test key')
+  } finally {
+    testing.value = null
   }
+}
+
+async function removeKey(provider: AIProvider): Promise<void> {
+  await removeApiKey(provider)
+  keyState[provider] = false
+  keyInput[provider] = ''
+  refreshProvider(provider)
+  ui.success(`${providerName(provider)} key removed`)
 }
 
 async function save(): Promise<void> {
   saving.value = true
   try {
-    await settings.save(form.value)
-    if (keyInput.value.openai) await setApiKey(AIProvider.OPENAI, keyInput.value.openai)
-    if (keyInput.value.gemini) await setApiKey(AIProvider.GEMINI, keyInput.value.gemini)
-    if (keyInput.value.elevenlabs) await setApiKey(AIProvider.ELEVENLABS, keyInput.value.elevenlabs)
+    await settings.save({ ...form.value, theme: theme.value })
+    for (const provider of [OPENAI, GEMINI, ELEVENLABS]) {
+      const typed = keyInput[provider].trim()
+      if (typed) await setApiKey(provider, typed)
+    }
     sendMessage({ action: 'settingsSaved' }).catch(() => {})
     ui.success('Settings saved')
     emit('update:open', false)
@@ -255,6 +363,15 @@ async function save(): Promise<void> {
   padding: 0.7rem 0;
   border-top: 1px solid var(--rule);
 }
+label.row {
+  cursor: pointer;
+}
+.row--field {
+  align-items: flex-start;
+}
+.row--field .row__text {
+  padding-top: 0.4rem;
+}
 .sec .row:first-of-type {
   border-top: 0;
 }
@@ -274,11 +391,13 @@ async function save(): Promise<void> {
   color: var(--ink-faint);
 }
 .control {
-  width: 220px;
+  width: 270px;
   flex: none;
+}
+.select {
   position: relative;
 }
-.control select {
+.select select {
   width: 100%;
   appearance: none;
   font-family: var(--font-serif);
@@ -290,7 +409,7 @@ async function save(): Promise<void> {
   padding: 0.45rem 1.9rem 0.45rem 0.65rem;
   cursor: pointer;
 }
-.control:not(.control--num)::after {
+.select::after {
   content: '▾';
   position: absolute;
   right: 0.65rem;
@@ -299,8 +418,13 @@ async function save(): Promise<void> {
   color: var(--ink-faint);
   pointer-events: none;
 }
+.shared {
+  padding-top: 0.45rem;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  font-style: italic;
+}
 .control--num {
-  width: auto;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -331,39 +455,7 @@ async function save(): Promise<void> {
   background: var(--accent-tint);
   color: var(--accent);
 }
-.field {
-  padding: 0.7rem 0;
-  border-top: 1px solid var(--rule);
-}
-.sec .field:first-of-type {
-  border-top: 0;
-}
-.field__top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 0.4rem;
-}
-.field__name {
-  font-family: var(--font-serif);
-  font-size: var(--text-base);
-  color: var(--ink);
-}
-.field__state {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  color: var(--ink-faint);
-}
-.field__state.is-set {
-  color: var(--positive);
-}
-.field__row {
-  display: flex;
-  gap: 0.5rem;
-}
 .input {
-  flex: 1;
-  min-width: 0;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--ink);
@@ -372,7 +464,6 @@ async function save(): Promise<void> {
   border-radius: var(--radius);
   padding: 0.45rem 0.6rem;
   outline: none;
-  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .input:focus {
   border-color: var(--accent);
@@ -380,7 +471,6 @@ async function save(): Promise<void> {
 }
 .input--num {
   width: 80px;
-  flex: none;
   text-align: center;
 }
 .unit {
@@ -389,8 +479,21 @@ async function save(): Promise<void> {
   color: var(--ink-muted);
 }
 .hint {
-  margin-top: 0.6rem;
   font-size: var(--text-2xs);
   color: var(--ink-faint);
+}
+
+@media (max-width: 600px) {
+  .row--field {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
+  }
+  .row--field .row__text {
+    padding-top: 0;
+  }
+  .control {
+    width: 100%;
+  }
 }
 </style>

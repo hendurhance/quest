@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.1] - 2026-09-25
+
+### Added
+
+- Quest now loads model lists from your AI provider, so new models appear without an update.
+- Settings warns you when a model you picked is no longer available.
+- You can now pick a voice model for podcasts.
+- You can now test or remove a saved API key.
+- Press `⌘↵` or `Ctrl+Enter` in the popup to save.
+- Press `/` in the library to jump to search.
+- Press `Esc` in the reader to go back to the library.
+- You can hide the Quest pill on a saved page.
+
+### Changed
+
+- Popup tags now stay on one row that scrolls sideways.
+- The popup's Save button now always stays in view.
+- The popup now shows the page right away.
+- The popup now remembers your "Close tab after saving" choice.
+- The popup's AI switches stay off until AI is set up.
+- The library and reader now fit small windows.
+- The reader now opens where you stopped reading.
+- Reader errors now show in place, with a link to Settings.
+- Bulk delete now asks before it deletes.
+- Quest now asks OpenAI not to store your article text.
+
+### Fixed
+
+- Summaries now work with OpenAI's newer reasoning models.
+- Searching no longer leaves you on an empty page.
+- Saving settings no longer undoes a theme change.
+- Quest no longer runs its data upgrade twice at start-up.
+
 ## [1.1.0] - 2026-05-23
 
 A ground-up rebuild of the interface and the data and AI layers, themed as an

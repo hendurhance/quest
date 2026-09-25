@@ -1,6 +1,18 @@
 import type { TTSProviderClient } from './types'
 import { estimateSpeechDurationSec } from '../audio'
 
+function errorText(body: string): string {
+  try {
+    const detail = JSON.parse(body)?.detail
+    if (typeof detail === 'string') return detail
+    if (Array.isArray(detail)) return detail.map((d) => d?.msg).filter(Boolean).join('; ') || body
+    if (detail?.message) return detail.message
+  } catch {
+    // not JSON — use the text as-is
+  }
+  return body.trim().slice(0, 300) || 'ElevenLabs API error'
+}
+
 export const elevenLabsProvider: TTSProviderClient = {
   id: 'elevenlabs',
   async speak({ text, voiceId, model, apiKey }) {
@@ -14,9 +26,7 @@ export const elevenLabsProvider: TTSProviderClient = {
       }),
     })
 
-    if (!response.ok) {
-      throw new Error((await response.text()) || 'ElevenLabs API error')
-    }
+    if (!response.ok) throw new Error(errorText(await response.text()))
 
     // ElevenLabs returns encoded MP3; precise duration would need decoding,
     // so we estimate (the reader can refine on playback if needed).

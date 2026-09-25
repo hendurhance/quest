@@ -2,7 +2,9 @@
   <article
     class="entry"
     :class="[`entry--${view}`, { 'entry--selected': selected, 'entry--selectable': selectMode }]"
+    tabindex="0"
     @click="onCardClick"
+    @keydown.enter.self="onCardClick"
   >
     <label v-if="selectMode" class="entry__check" @click.stop>
       <input type="checkbox" :checked="selected" @change="emit('select')" />
@@ -261,8 +263,14 @@ const statusLabel = computed(() => {
   justify-content: flex-end;
 }
 .entry:hover .entry__actions,
+.entry:focus-within .entry__actions,
 .entry--selected .entry__actions {
   opacity: 1;
+}
+@media (hover: none) {
+  .entry__actions {
+    opacity: 1;
+  }
 }
 .act {
   width: 30px;

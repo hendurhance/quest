@@ -143,7 +143,9 @@ quest/
 │   │   │   ├── podcast.ts         # generatePodcast()
 │   │   │   ├── group.ts           # groupArticle() / categorizeArticle()
 │   │   │   ├── test-key.ts        # Lightweight API-key auth check
-│   │   │   ├── prompts.ts, config.ts, models.ts, voices.ts, audio.ts, audit.ts
+│   │   │   ├── catalog.ts         # Live model/voice lists from each provider's API
+│   │   │   ├── pricing.ts         # Known per-model prices for cost estimates
+│   │   │   ├── prompts.ts, config.ts, voices.ts, audio.ts, audit.ts
 │   │   │   └── index.ts
 │   │   ├── keys.ts            # Encrypted API-key storage (Web Crypto)
 │   │   ├── messaging/         # Typed message map + router (messages.ts, bus.ts)

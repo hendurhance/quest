@@ -1,4 +1,5 @@
 import type { TTSProviderClient } from './types'
+import { modelUnavailable } from './errors'
 import { base64ToBytes, isPcm, parsePcmRate, pcmToWav, pcmDurationSec, estimateSpeechDurationSec } from '../audio'
 
 export const geminiTtsProvider: TTSProviderClient = {
@@ -21,6 +22,7 @@ export const geminiTtsProvider: TTSProviderClient = {
       },
     )
 
+    if (response.status === 404) throw modelUnavailable('Gemini', model, 'Podcasts')
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
       throw new Error(error.error?.message || 'Gemini TTS API error')

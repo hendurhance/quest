@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Settings } from '@/types'
-import { defaultSettings, loadSettings, saveSettings } from '@/core/settings'
+import { loadSettings, saveSettings } from '@/core/settings'
 
 export const useSettingsStore = defineStore('settings', () => {
   const settings = ref<Settings | null>(null)
@@ -18,7 +18,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function update(patch: Partial<Settings>): Promise<void> {
-    await save({ ...(settings.value ?? defaultSettings()), ...patch })
+    await save({ ...(await loadSettings()), ...patch })
   }
 
   return { settings, loaded, load, save, update }

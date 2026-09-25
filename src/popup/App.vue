@@ -9,84 +9,103 @@
         <button class="icon-btn" :title="theme === 'dark' ? 'Light mode' : 'Ink mode'" @click="toggleTheme">
           <QIcon :name="theme === 'dark' ? 'sun' : 'moon'" :size="16" />
         </button>
-        <button class="icon-btn" title="Open library" @click="openLibrary">
+        <button class="icon-btn" title="Open library" @click="openQuest()">
           <QIcon name="book-open" :size="16" />
         </button>
       </div>
     </header>
 
     <section class="page-card">
-      <div class="page-card__top">
-        <img v-if="page.favicon" class="page-card__favicon" :src="page.favicon" alt="" />
-        <div class="page-card__head">
-          <h1 class="page-card__title">{{ page.title }}</h1>
-          <p class="page-card__meta">
-            <span>{{ page.domain || '—' }}</span>
+      <img v-if="page.favicon" class="page-card__favicon" :src="page.favicon" alt="" />
+      <div class="page-card__head">
+        <h1 class="page-card__title" :title="page.title">{{ page.title }}</h1>
+        <p class="page-card__meta">
+          <span class="page-card__domain">{{ page.domain || '—' }}</span>
+          <template v-if="canSave">
             <span class="dot">·</span>
             <span>{{ page.readingTime }}</span>
-          </p>
-        </div>
+          </template>
+        </p>
       </div>
     </section>
 
-    <section class="form" v-if="!isSaved">
-      <div class="field">
-        <span class="field__label">Tags</span>
-        <div class="tags-input" :class="{ 'is-focused': tagFocused }">
-          <QTag v-for="t in tags" :key="t" removable @remove="removeTag(t)">{{ t }}</QTag>
-          <input
-            v-model="tagInput"
-            class="tags-input__field"
-            :placeholder="tags.length ? '' : 'Add tags, comma-separated'"
-            @keydown="onTagKey"
-            @focus="tagFocused = true"
-            @blur="tagFocused = false"
-          />
-        </div>
-        <div v-if="suggestions.length" class="suggestions">
-          <button v-for="s in suggestions" :key="s" class="suggestion" type="button" @mousedown.prevent="addTag(s)">
-            + {{ s }}
-          </button>
-        </div>
-      </div>
+    <p v-if="page.url && !canSave" class="notice">Quest can only save web pages. Browser and extension pages can’t be saved.</p>
 
-      <label class="field">
-        <span class="field__label">Shelf</span>
-        <div class="select">
-          <select v-model="categoryId">
-            <option value="">Uncategorized</option>
-            <option v-for="c in library.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
-          </select>
-        </div>
-      </label>
-
-      <div class="toggles">
-        <div class="toggle">
-          <span class="toggle__text">AI summary on save</span>
-          <QSwitch v-model="generateSummary" />
-        </div>
-        <div class="toggle">
-          <span class="toggle__text">Generate podcast</span>
-          <QSwitch v-model="generatePodcast" />
-        </div>
-        <div class="toggle">
-          <span class="toggle__text">Close tab after saving</span>
-          <QSwitch v-model="closeTabAfterSave" />
-        </div>
-      </div>
-
-      <QButton variant="primary" size="lg" block :loading="isSaving" @click="save">
-        {{ isSaving ? 'Saving…' : 'Save to Quest' }}
-      </QButton>
+    <section v-else-if="savedId" class="saved">
+      <QIcon name="check" :size="26" class="saved__mark" />
+      <p class="saved__text">{{ justSaved ? 'Saved to your library.' : 'Already in your library.' }}</p>
+      <QButton variant="secondary" size="md" @click="openQuest(`article=${savedId}`)">Open in Quest</QButton>
     </section>
 
-    <section v-else class="saved">
-      <QIcon name="check" :size="28" class="saved__mark" />
-      <p class="saved__text">Saved to your library.</p>
-      <QButton variant="secondary" size="md" @click="openLibrary">Open library</QButton>
-    </section>
+    <template v-else>
+      <section class="form">
+        <div class="field">
+          <span class="field__label">Tags</span>
+          <div class="tags-input" :class="{ 'is-focused': tagFocused }" @click="tagField?.focus()">
+            <div
+              v-if="tags.length"
+              ref="tagTrack"
+              class="x-scroll"
+              :class="{ 'fade-l': tagEdges.left, 'fade-r': tagEdges.right }"
+              @wheel="wheelToX"
+              @scroll="updateTagEdges"
+            >
+              <QTag v-for="t in tags" :key="t" removable @remove="removeTag(t)">{{ t }}</QTag>
+            </div>
+            <input
+              ref="tagField"
+              v-model="tagInput"
+              class="tags-input__field"
+              :placeholder="tags.length ? 'Add another…' : 'Add tags, comma-separated'"
+              @keydown="onTagKey"
+              @paste="onTagPaste"
+              @focus="tagFocused = true"
+              @blur="tagFocused = false"
+            />
+          </div>
+          <div v-if="suggestions.length" class="x-scroll suggestions" @wheel="wheelToX">
+            <button v-for="s in suggestions" :key="s" class="suggestion" type="button" @mousedown.prevent="addTags(s)">
+              + {{ s }}
+            </button>
+          </div>
+        </div>
 
-    <QRule />
+        <label class="field">
+          <span class="field__label">Shelf</span>
+          <span class="select">
+            <select v-model="categoryId">
+              <option value="">Uncategorized</option>
+              <option v-for="c in library.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+          </span>
+        </label>
+
+        <div class="toggles">
+          <!-- Explicit `for`: the label also contains the "Set up" button. -->
+          <label class="toggle" :class="{ 'is-off': !ai.summary }" for="toggle-summary">
+            <span class="toggle__text">AI summary on save</span>
+            <button v-if="!ai.summary" class="toggle__setup" type="button" @click.prevent="openQuest('settings=1')">Set up</button>
+            <QSwitch id="toggle-summary" v-model="generateSummary" :disabled="!ai.summary" />
+          </label>
+          <label class="toggle" :class="{ 'is-off': !ai.podcast }" for="toggle-podcast">
+            <span class="toggle__text">Generate podcast</span>
+            <button v-if="!ai.podcast" class="toggle__setup" type="button" @click.prevent="openQuest('settings=1')">Set up</button>
+            <QSwitch id="toggle-podcast" v-model="generatePodcast" :disabled="!ai.podcast" />
+          </label>
+          <label class="toggle">
+            <span class="toggle__text">Close tab after saving</span>
+            <QSwitch v-model="closeTabAfterSave" />
+          </label>
+        </div>
+      </section>
+
+      <div class="save-bar">
+        <QButton variant="primary" size="lg" block :loading="isSaving" :disabled="!page.url" @click="save">
+          {{ isSaving ? 'Saving…' : 'Save to Quest' }}
+        </QButton>
+        <p class="save-bar__hint"><QKbd>{{ modKey }}</QKbd><QKbd>↵</QKbd> to save</p>
+      </div>
+    </template>
 
     <footer class="footer">
       <p class="footer__stats">
@@ -95,9 +114,11 @@
         <strong>{{ library.stats.unread }}</strong> unread
       </p>
       <ul v-if="recent.length" class="recent">
-        <li v-for="a in recent" :key="a.id" class="recent__item" @click="openArticle(a.url.actual)">
-          <span class="recent__title">{{ a.title }}</span>
-          <span class="recent__when">{{ formatRelativeTime(a.createdAt) }}</span>
+        <li v-for="a in recent" :key="a.id">
+          <button class="recent__item" type="button" @click="openArticle(a.url.actual)">
+            <span class="recent__title">{{ a.title }}</span>
+            <span class="recent__when">{{ formatRelativeTime(a.createdAt) }}</span>
+          </button>
         </li>
       </ul>
     </footer>
@@ -107,16 +128,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useLibraryStore } from '@/stores/library'
 import { useSettingsStore } from '@/stores/settings'
 import { useUiStore } from '@/stores/ui'
 import { useTheme } from '@/composables/useTheme'
 import { sendMessage } from '@/core/messaging/bus'
 import { normalizeUrl, formatRelativeTime } from '@/core/format'
+import { aiReadiness } from '@/core/ai/config'
+import { db } from '@/core/db'
 import { AIProvider, SummaryType } from '@/types'
 import type { NewArticle } from '@/core/db'
-import { QButton, QTag, QRule, QToastHost, QIcon, QSwitch } from '@/design/primitives'
+import { QButton, QTag, QToastHost, QIcon, QSwitch, QKbd } from '@/design/primitives'
 
 const library = useLibraryStore()
 const settings = useSettingsStore()
@@ -127,13 +150,21 @@ const page = ref({ title: 'Loading…', url: '', domain: '', favicon: '', readin
 const tags = ref<string[]>([])
 const tagInput = ref('')
 const tagFocused = ref(false)
+const tagField = ref<HTMLInputElement | null>(null)
+const tagTrack = ref<HTMLElement | null>(null)
+const tagEdges = reactive({ left: false, right: false })
 const categoryId = ref('')
 const generateSummary = ref(false)
 const generatePodcast = ref(false)
 const closeTabAfterSave = ref(true)
+const ai = reactive({ summary: false, podcast: false })
 const isSaving = ref(false)
-const isSaved = ref(false)
+const savedId = ref<string | null>(null)
+const justSaved = ref(false)
 let activeTabId: number | undefined
+
+const modKey = navigator.platform.toLowerCase().includes('mac') ? '⌘' : 'Ctrl'
+const canSave = computed(() => /^https?:/.test(page.value.url))
 
 const recent = computed(() =>
   library.articles
@@ -147,7 +178,7 @@ const suggestions = computed(() => {
   return library.popularTags
     .map((t) => t.name)
     .filter((name) => !tags.value.includes(name) && (!q || name.toLowerCase().includes(q)))
-    .slice(0, 5)
+    .slice(0, 8)
 })
 
 function safeDomain(url?: string): string {
@@ -158,29 +189,52 @@ function safeDomain(url?: string): string {
   }
 }
 
+function wheelToX(e: WheelEvent): void {
+  const el = e.currentTarget as HTMLElement
+  if (el.scrollWidth <= el.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+  e.preventDefault()
+  el.scrollLeft += e.deltaY
+}
+
+function updateTagEdges(): void {
+  const el = tagTrack.value
+  tagEdges.left = !!el && el.scrollLeft > 1
+  tagEdges.right = !!el && el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+}
+
+watch(tags, async (next, prev) => {
+  await nextTick()
+  if (tagTrack.value && next.length > (prev?.length ?? 0)) tagTrack.value.scrollLeft = tagTrack.value.scrollWidth
+  updateTagEdges()
+})
+
+function addTags(value: string): void {
+  const incoming = value
+    .split(',')
+    .map((t) => t.trim().toLowerCase())
+    .filter((t) => t && !tags.value.includes(t))
+  if (incoming.length) tags.value = [...tags.value, ...new Set(incoming)]
+  tagInput.value = ''
+}
+
 function onTagKey(e: KeyboardEvent): void {
-  if (e.key === 'Enter' || e.key === ',') {
+  if ((e.key === 'Enter' || e.key === ',') && !(e.metaKey || e.ctrlKey)) {
     e.preventDefault()
-    addTag(tagInput.value)
+    addTags(tagInput.value)
   } else if (e.key === 'Backspace' && !tagInput.value && tags.value.length) {
     tags.value = tags.value.slice(0, -1)
   }
 }
 
-function addTag(value: string): void {
-  const tag = value.trim().replace(/,$/, '').toLowerCase()
-  if (tag && !tags.value.includes(tag)) tags.value = [...tags.value, tag]
-  tagInput.value = ''
+function onTagPaste(e: ClipboardEvent): void {
+  const text = e.clipboardData?.getData('text') ?? ''
+  if (!text.includes(',')) return
+  e.preventDefault()
+  addTags(tagInput.value + text)
 }
 
 function removeTag(tag: string): void {
   tags.value = tags.value.filter((t) => t !== tag)
-}
-
-function checkSaved(): void {
-  if (!page.value.url) return
-  const clean = normalizeUrl(page.value.url)
-  isSaved.value = library.articles.some((a) => a.url.clean === clean)
 }
 
 function estimateReadingTime(tabId: number): void {
@@ -233,7 +287,8 @@ async function extractContent(tabId: number): Promise<string> {
 }
 
 async function save(): Promise<void> {
-  if (isSaving.value || isSaved.value || !page.value.url) return
+  if (isSaving.value || savedId.value || !canSave.value) return
+  addTags(tagInput.value) // keep a tag that was typed but not yet committed
   isSaving.value = true
   try {
     const text = activeTabId ? await extractContent(activeTabId) : ''
@@ -247,7 +302,8 @@ async function save(): Promise<void> {
     }
 
     const article = await library.addArticle(input)
-    isSaved.value = true
+    savedId.value = article.id
+    justSaved.value = true
 
     if (generateSummary.value) {
       sendMessage({
@@ -260,12 +316,10 @@ async function save(): Promise<void> {
     if (generatePodcast.value) {
       sendMessage({ action: 'generatePodcast', articleId: article.id }).catch(() => {})
     }
-    if (settings.settings?.autoGroup) {
+    if (settings.settings?.autoGroup && ai.summary) {
       sendMessage({ action: 'groupArticle', articleId: article.id }).catch(() => {})
     }
     sendMessage({ action: 'articleSaved', article }).catch(() => {})
-
-    ui.success('Saved to your library')
 
     if (closeTabAfterSave.value && activeTabId !== undefined) {
       setTimeout(() => activeTabId !== undefined && chrome.tabs.remove(activeTabId), 350)
@@ -281,31 +335,59 @@ function openArticle(url: string): void {
   chrome.tabs.create({ url })
 }
 
-function openLibrary(): void {
-  chrome.tabs.create({ url: chrome.runtime.getURL('src/manager/index.html') })
+function openQuest(query?: string): void {
+  const url = chrome.runtime.getURL('src/manager/index.html')
+  chrome.tabs.create({ url: query ? `${url}?${query}` : url })
 }
 
-onMounted(async () => {
-  await settings.load()
-  await library.load()
-  generateSummary.value = settings.settings?.autoSummary ?? false
-  generatePodcast.value = settings.settings?.autoPodcast ?? false
-
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (tab) {
-    activeTabId = tab.id
-    page.value = {
-      title: tab.title || 'Untitled',
-      url: tab.url || '',
-      domain: safeDomain(tab.url),
-      favicon: tab.favIconUrl || '',
-      readingTime: 'Estimating…',
-      wordCount: 0,
-    }
-    checkSaved()
-    if (tab.id !== undefined) estimateReadingTime(tab.id)
+function onKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault()
+    void save()
   }
+}
+
+watch(closeTabAfterSave, (value) => {
+  if (settings.loaded && value !== settings.settings?.closeTabAfterSave) void settings.update({ closeTabAfterSave: value })
 })
+
+async function loadTab(): Promise<void> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!tab) return
+  activeTabId = tab.id
+  page.value = {
+    title: tab.title || 'Untitled',
+    url: tab.url || '',
+    domain: safeDomain(tab.url),
+    favicon: tab.favIconUrl || '',
+    readingTime: 'Estimating…',
+    wordCount: 0,
+  }
+  if (!canSave.value) return
+  if (tab.id !== undefined) estimateReadingTime(tab.id)
+  await db.init()
+  savedId.value = (await db.articles.getByCleanUrl(normalizeUrl(page.value.url)))?.id ?? null
+  if (!savedId.value) {
+    await nextTick()
+    tagField.value?.focus()
+  }
+}
+
+async function loadPreferences(): Promise<void> {
+  await settings.load()
+  const ready = await aiReadiness()
+  Object.assign(ai, ready)
+  generateSummary.value = ready.summary && (settings.settings?.autoSummary ?? false)
+  generatePodcast.value = ready.podcast && (settings.settings?.autoPodcast ?? false)
+  closeTabAfterSave.value = settings.settings?.closeTabAfterSave ?? true
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+  void Promise.all([loadTab(), loadPreferences(), library.load()])
+})
+
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <style scoped>
@@ -313,7 +395,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding: var(--space-5);
+  padding: var(--space-4) var(--space-5) 0;
 }
 
 .masthead {
@@ -332,7 +414,7 @@ onMounted(async () => {
 .wordmark__name {
   font-family: var(--font-display);
   font-weight: var(--weight-semibold);
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   letter-spacing: var(--tracking-tight);
 }
 .masthead__actions {
@@ -358,42 +440,55 @@ onMounted(async () => {
 }
 
 .page-card {
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-lg);
-  background: var(--paper-raised);
-  padding: var(--space-4);
-}
-.page-card__top {
   display: flex;
   gap: var(--space-3);
   align-items: flex-start;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--paper-raised);
+  padding: var(--space-3) var(--space-4);
 }
 .page-card__favicon {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: var(--radius-sm);
   flex: none;
   margin-top: 2px;
 }
+.page-card__head {
+  min-width: 0;
+}
 .page-card__title {
   font-family: var(--font-display);
   font-weight: var(--weight-semibold);
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   line-height: var(--leading-snug);
   letter-spacing: var(--tracking-tight);
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 .page-card__meta {
-  margin-top: 0.35rem;
+  margin-top: 0.3rem;
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   color: var(--ink-muted);
   display: flex;
   gap: 0.4rem;
   align-items: center;
+  white-space: nowrap;
+}
+.page-card__domain {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notice {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  font-style: italic;
+  line-height: var(--leading-normal);
 }
 
 .form {
@@ -405,6 +500,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  min-width: 0;
 }
 .field__label {
   font-family: var(--font-mono);
@@ -416,13 +512,13 @@ onMounted(async () => {
 
 .tags-input {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
   align-items: center;
+  gap: 0.4rem;
   border: 1px solid var(--rule-strong);
   border-radius: var(--radius);
   background: var(--paper-raised);
-  padding: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  cursor: text;
   transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .tags-input.is-focused {
@@ -430,20 +526,45 @@ onMounted(async () => {
   box-shadow: 0 0 0 3px var(--accent-tint);
 }
 .tags-input__field {
-  flex: 1;
-  min-width: 90px;
+  flex: 1 0 96px;
+  min-width: 96px;
   border: 0;
   outline: none;
   background: transparent;
   font-family: var(--font-serif);
   font-size: var(--text-base);
   color: var(--ink);
+  padding: 0.1rem 0;
 }
-.suggestions {
+.tags-input__field::placeholder {
+  color: var(--ink-faint);
+}
+
+/* One-line chip rows: scroll sideways instead of wrapping and growing the popup. */
+.x-scroll {
   display: flex;
-  flex-wrap: wrap;
   gap: 0.3rem;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
 }
+.x-scroll::-webkit-scrollbar {
+  display: none;
+}
+.x-scroll > * {
+  flex: none;
+}
+.fade-l {
+  mask-image: linear-gradient(to right, transparent, #000 18px);
+}
+.fade-r {
+  mask-image: linear-gradient(to left, transparent, #000 18px);
+}
+.fade-l.fade-r {
+  mask-image: linear-gradient(to right, transparent, #000 18px, #000 calc(100% - 18px), transparent);
+}
+
 .suggestion {
   border: 1px dashed var(--rule-strong);
   background: none;
@@ -453,6 +574,7 @@ onMounted(async () => {
   font-size: var(--text-2xs);
   color: var(--ink-muted);
   cursor: pointer;
+  white-space: nowrap;
 }
 .suggestion:hover {
   color: var(--accent);
@@ -461,6 +583,7 @@ onMounted(async () => {
 
 .select {
   position: relative;
+  display: block;
 }
 .select select {
   width: 100%;
@@ -471,7 +594,7 @@ onMounted(async () => {
   background: var(--paper-raised);
   border: 1px solid var(--rule-strong);
   border-radius: var(--radius);
-  padding: 0.55rem 2rem 0.55rem 0.7rem;
+  padding: 0.5rem 2rem 0.5rem 0.7rem;
   cursor: pointer;
 }
 .select::after {
@@ -487,17 +610,59 @@ onMounted(async () => {
 .toggles {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.6rem;
 }
 .toggle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem;
+  cursor: pointer;
 }
 .toggle__text {
+  flex: 1;
   font-size: var(--text-base);
   color: var(--ink);
+}
+.toggle.is-off {
+  cursor: default;
+}
+.toggle.is-off .toggle__text {
+  color: var(--ink-faint);
+}
+.toggle__setup {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* Stays in view when the form is taller than the popup (Chrome caps it at 600px). */
+.save-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: calc(var(--space-2) * -1) calc(var(--space-5) * -1) 0;
+  padding: var(--space-3) var(--space-5);
+  background-color: var(--paper);
+  background-image: var(--grain);
+  border-top: 1px solid transparent;
+}
+.save-bar__hint {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.2rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
 }
 
 .saved {
@@ -505,7 +670,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   gap: 0.6rem;
-  padding: var(--space-4) 0;
+  padding: var(--space-3) 0;
   text-align: center;
 }
 .saved__mark {
@@ -521,6 +686,8 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  padding: var(--space-3) 0 var(--space-4);
+  border-top: 1px solid var(--rule);
 }
 .footer__stats {
   font-family: var(--font-mono);
@@ -538,12 +705,16 @@ onMounted(async () => {
   flex-direction: column;
 }
 .recent__item {
+  width: 100%;
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
   align-items: baseline;
   padding: 0.4rem 0;
+  border: 0;
   border-top: 1px solid var(--rule);
+  background: none;
+  text-align: left;
   cursor: pointer;
 }
 .recent__item:hover .recent__title {
@@ -570,6 +741,5 @@ onMounted(async () => {
 <style>
 body {
   width: 380px;
-  min-height: 460px;
 }
 </style>

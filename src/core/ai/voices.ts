@@ -1,6 +1,3 @@
-import { AIProvider } from '@/types/ai-providers'
-import type { TTSProvider } from '@/types/ai-providers'
-
 export interface VoiceOption {
   id: string
   name: string
@@ -10,85 +7,6 @@ export interface VoiceOption {
   age?: string
   useCase?: string
 }
-
-/**
- * ElevenLabs Voice Options
- * Selected 8 high-quality voices with diverse characteristics
- */
-export const ELEVENLABS_VOICES: VoiceOption[] = [
-  {
-    id: '21m00Tcm4TlvDq8ikWAM',
-    name: 'Rachel',
-    gender: 'female',
-    description: 'Matter-of-fact, personable woman. Great for conversational use cases.',
-    accent: 'american',
-    age: 'young',
-    useCase: 'conversational'
-  },
-  {
-    id: 'EXAVITQu4vr4xnSDxMaL',
-    name: 'Sarah',
-    gender: 'female',
-    description: 'Young adult woman with a confident and warm, mature quality and a reassuring, professional tone.',
-    accent: 'american',
-    age: 'young',
-    useCase: 'entertainment_tv'
-  },
-  {
-    id: '9BWtsMINqrJLrRacOk9x',
-    name: 'Aria',
-    gender: 'female',
-    description: 'A middle-aged female with an African-American accent. Calm with a hint of rasp.',
-    accent: 'american',
-    age: 'middle_aged',
-    useCase: 'informative_educational'
-  },
-  {
-    id: 'AZnzlk1XvdvUeBnXmlld',
-    name: 'Domi',
-    gender: 'female',
-    description: 'Strong and confident voice',
-    accent: 'american',
-    age: 'young',
-    useCase: 'narration'
-  },
-  {
-    id: '29vD33N1CtxCmqQRPOHJ',
-    name: 'Drew',
-    gender: 'male',
-    description: 'Well-rounded male voice',
-    accent: 'american',
-    age: 'middle_aged',
-    useCase: 'news'
-  },
-  {
-    id: '5Q0t7uMcjvnagumLfvZi',
-    name: 'Paul',
-    gender: 'male',
-    description: 'Authoritative male voice',
-    accent: 'american',
-    age: 'middle_aged',
-    useCase: 'news'
-  },
-  {
-    id: 'CwhRBWXzGAHq8TQ4Fs17',
-    name: 'Roger',
-    gender: 'male',
-    description: 'Easy going and perfect for casual conversations.',
-    accent: 'american',
-    age: 'middle_aged',
-    useCase: 'conversational'
-  },
-  {
-    id: 'CYw3kZ02Hs0563khs1Fj',
-    name: 'Dave',
-    gender: 'male',
-    description: 'Conversational British voice',
-    accent: 'british',
-    age: 'young',
-    useCase: 'characters'
-  }
-]
 
 /**
  * Google (Gemini) TTS Voice Options
@@ -126,21 +44,6 @@ export const GEMINI_VOICES: VoiceOption[] = [
   { id: 'Zephyr', name: 'Zephyr', gender: 'female' },
   { id: 'Zubenelgenubi', name: 'Zubenelgenubi', gender: 'male' }
 ]
-
-/**
- * Get voice options for a specific provider
- */
-export function getVoiceOptions(provider: TTSProvider): VoiceOption[] {
-  return provider === AIProvider.ELEVENLABS ? ELEVENLABS_VOICES : GEMINI_VOICES
-}
-
-/**
- * Get a voice by ID
- */
-export function getVoiceById(provider: TTSProvider, voiceId: string): VoiceOption | undefined {
-  const voices = getVoiceOptions(provider)
-  return voices.find(voice => voice.id === voiceId)
-}
 
 /**
  * Get formatted voice label for display
